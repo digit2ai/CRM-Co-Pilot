@@ -1,488 +1,259 @@
 {% extends "base.html" %}
 
-{% block title %}Backlog - {{ project.name }}{% endblock %}
+{% block title %}{{ project.name }} - Backlog{% endblock %}
 
 {% block content %}
-<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-    <div>
-        <h2>Product Backlog - {{ project.name }}</h2>
-        <p style="color: #6b778c;">Manage and assign user stories to sprints</p>
-    </div>
-    <div style="display: flex; gap: 1rem;">
-        <button class="btn btn-success" onclick="showModal('createStoryModal')">+ Add User Story</button>
-        <a href="{{ url_for('project_detail', project_id=project.id) }}" class="btn btn-secondary">← Back to Project</a>
-    </div>
-</div>
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2><i class="fas fa-list-ul"></i> {{ project.name }} - Backlog</h2>
+                    <p class="text-muted">Manage and prioritize user stories for this project</p>
+                </div>
+                <div>
+                    <a href="{{ url_for('project_detail', project_id=project.id) }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to Project
+                    </a>
+                    <button class="btn btn-primary" data-toggle="modal" data-target="#addStoryModal">
+                        <i class="fas fa-plus"></i> Add User Story
+                    </button>
+                </div>
+            </div>
 
-<!-- Filter and Search -->
-<div class="card">
-    <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
-        <input type="text" id="searchStories" class="form-control" placeholder="Search stories..." style="max-width: 300px;">
-        <select id="filterStatus" class="form-control" style="max-width: 150px;">
-            <option value="">All Status</option>
-            <option value="todo">To Do</option>
-            <option value="in-progress">In Progress</option>
-            <option value="done">Done</option>
-        </select>
-        <select id="filterSprint" class="form-control" style="max-width: 200px;">
-            <option value="">All Sprints</option>
-            <option value="unassigned">Unassigned</option>
-        </select>
-        <button class="btn btn-secondary" onclick="clearFilters()">Clear Filters</button>
-    </div>
-</div>
+            <!-- Sprint Filter -->
+            <div class="row mb-4">
+                <div class="col-md-4">
+                    <select class="form-control" id="sprintFilter">
+                        <option value="">All Sprints</option>
+                        {% for sprint in sprints %}
+                        <option value="{{ sprint.id }}">{{ sprint.name }}</option>
+                        {% endfor %}
+                        <option value="unassigned">Unassigned Stories</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <select class="form-control" id="statusFilter">
+                        <option value="">All Statuses</option>
+                        <option value="todo">To Do</option>
+                        <option value="in-progress">In Progress</option>
+                        <option value="Done">Done</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <input type="text" class="form-control" id="searchStories" placeholder="Search stories...">
+                </div>
+            </div>
 
-<!-- Backlog Stories -->
-<div class="card">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-        <h3>User Stories</h3>
-        <div id="storyCount" style="color: #6b778c; font-size: 0.9rem;"></div>
-    </div>
-    <div id="storiesContainer">
-        <!-- Stories will be loaded here -->
-    </div>
-</div>
+            <!-- User Stories Section -->
+            <div class="card">
+                <div class="card-header">
+                    <h4><i class="fas fa-book"></i> User Stories</h4>
+                    <span class="badge badge-primary">{{ user_stories|length }} Total Stories</span>
+                </div>
+                <div class="card-body">
+                    {% if user_stories %}
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover" id="storiesTable">
+                                <thead class="thead-dark">
+                                    <tr>
+                                        <th width="5%">ID</th>
+                                        <th width="30%">Title</th>
+                                        <th width="15%">Status</th>
+                                        <th width="10%">Points</th>
+                                        <th width="15%">Sprint</th>
+                                        <th width="15%">Assignee</th>
+                                        <th width="10%">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for story in user_stories %}
+                                    <tr data-story-id="{{ story.id }}" data-sprint-id="{{ story.epic.sprint.id if story.epic and story.epic.sprint else 'unassigned' }}" data-status="{{ story.status }}">
+                                        <td>
+                                            <code>{{ story.story_id or story.id }}</code>
+                                        </td>
+                                        <td>
+                                            <strong>{{ story.title }}</strong>
+                                            {% if story.description %}
+                                            <br><small class="text-muted">{{ story.description[:100] }}{% if story.description|length > 100 %}...{% endif %}</small>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <span class="badge badge-{{ 'success' if story.status == 'Done' else 'warning' if story.status == 'in-progress' else 'secondary' }}">
+                                                {{ story.status|title }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="badge badge-info">{{ story.story_points or 'Not estimated' }}</span>
+                                        </td>
+                                        <td>
+                                            {% if story.epic and story.epic.sprint %}
+                                                <small class="text-muted">{{ story.epic.sprint.name }}</small>
+                                            {% else %}
+                                                <span class="text-muted"><i>Unassigned</i></span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if story.assignee %}
+                                                <span class="badge badge-light">{{ story.assignee }}</span>
+                                            {% else %}
+                                                <span class="text-muted"><i>Unassigned</i></span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <button class="btn btn-outline-primary btn-sm" onclick="editStory({{ story.id }})" title="Edit">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button class="btn btn-outline-info btn-sm" onclick="viewStory({{ story.id }})" title="View Details">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                                <button class="btn btn-outline-danger btn-sm" onclick="deleteStory({{ story.id }})" title="Delete">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-clipboard-list fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">No user stories found for this project</h5>
+                            <p class="text-muted mb-4">Start by creating your first user story to track project requirements.</p>
+                            <button class="btn btn-primary btn-lg" data-toggle="modal" data-target="#addStoryModal">
+                                <i class="fas fa-plus"></i> Create First User Story
+                            </button>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
 
-<!-- Create Story Modal -->
-<div id="createStoryModal" class="modal">
-    <div class="modal-content">
-        <span class="close" onclick="hideModal('createStoryModal')">&times;</span>
-        <h3>Create New User Story</h3>
-        <form id="createStoryForm">
-            <div class="form-group">
-                <label for="storyTitle">Title *</label>
-                <input type="text" id="storyTitle" class="form-control" required placeholder="As a user, I want...">
-            </div>
-            <div class="form-group">
-                <label for="storyDescription">Description</label>
-                <textarea id="storyDescription" class="form-control" rows="3" placeholder="Detailed description of the user story"></textarea>
-            </div>
-            <div class="form-group">
-                <label for="storyPoints">Story Points</label>
-                <select id="storyPoints" class="form-control">
-                    <option value="1">1</option>
-                    <option value="2">2</option>
-                    <option value="3" selected>3</option>
-                    <option value="5">5</option>
-                    <option value="8">8</option>
-                    <option value="13">13</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="storyStatus">Status</label>
-                <select id="storyStatus" class="form-control">
-                    <option value="todo" selected>To Do</option>
-                    <option value="in-progress">In Progress</option>
-                    <option value="done">Done</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="storyAssignee">Assignee</label>
-                <input type="text" id="storyAssignee" class="form-control" placeholder="Team member name">
-            </div>
-            <div class="form-group">
-                <label for="acceptanceCriteria">Acceptance Criteria</label>
-                <div id="criteriaContainer">
-                    <div class="criteria-item" style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
-                        <input type="text" class="form-control criteria-input" placeholder="Acceptance criterion">
-                        <button type="button" class="btn btn-danger" onclick="removeCriteria(this)" style="padding: 0.5rem;">×</button>
+            <!-- Summary Cards -->
+            {% if user_stories %}
+            <div class="row mt-4">
+                <div class="col-md-3">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <h5 class="card-title">Total Stories</h5>
+                            <h2 class="text-primary">{{ user_stories|length }}</h2>
+                        </div>
                     </div>
                 </div>
-                <button type="button" class="btn btn-secondary" onclick="addCriteria()">+ Add Criterion</button>
+                <div class="col-md-3">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <h5 class="card-title">Completed</h5>
+                            <h2 class="text-success">{{ user_stories|selectattr('status', 'equalto', 'Done')|list|length }}</h2>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <h5 class="card-title">In Progress</h5>
+                            <h2 class="text-warning">{{ user_stories|selectattr('status', 'equalto', 'in-progress')|list|length }}</h2>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <h5 class="card-title">Total Points</h5>
+                            <h2 class="text-info">{{ user_stories|sum(attribute='story_points') or 0 }}</h2>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div style="display: flex; gap: 1rem; justify-content: flex-end;">
-                <button type="button" class="btn btn-secondary" onclick="hideModal('createStoryModal')">Cancel</button>
-                <button type="submit" class="btn btn-primary">Create Story</button>
-            </div>
-        </form>
+            {% endif %}
+        </div>
     </div>
 </div>
 
-<!-- Edit Story Modal -->
-<div id="editStoryModal" class="modal">
-    <div class="modal-content">
-        <span class="close" onclick="hideModal('editStoryModal')">&times;</span>
-        <h3>Edit User Story</h3>
-        <form id="editStoryForm">
-            <input type="hidden" id="editStoryId">
-            <div class="form-group">
-                <label for="editStoryTitle">Title *</label>
-                <input type="text" id="editStoryTitle" class="form-control" required>
+<!-- Add Story Modal (Basic) -->
+<div class="modal fade" id="addStoryModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add New User Story</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
             </div>
-            <div class="form-group">
-                <label for="editStoryDescription">Description</label>
-                <textarea id="editStoryDescription" class="form-control" rows="3"></textarea>
+            <div class="modal-body">
+                <p class="text-muted">
+                    <i class="fas fa-info-circle"></i> 
+                    User story creation functionality will be available once the full user story management system is implemented.
+                </p>
+                <p class="text-muted">For now, you can view and manage existing user stories from this backlog view.</p>
             </div>
-            <div class="form-group">
-                <label for="editStoryPoints">Story Points</label>
-                <select id="editStoryPoints" class="form-control">
-                    <option value="1">1</option>
-                    <option value="2">2</option>
-                    <option value="3">3</option>
-                    <option value="5">5</option>
-                    <option value="8">8</option>
-                    <option value="13">13</option>
-                </select>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
             </div>
-            <div class="form-group">
-                <label for="editStoryStatus">Status</label>
-                <select id="editStoryStatus" class="form-control">
-                    <option value="todo">To Do</option>
-                    <option value="in-progress">In Progress</option>
-                    <option value="done">Done</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="editStoryAssignee">Assignee</label>
-                <input type="text" id="editStoryAssignee" class="form-control">
-            </div>
-            <div class="form-group">
-                <label for="editStorySprint">Sprint Assignment</label>
-                <select id="editStorySprint" class="form-control">
-                    <option value="">Unassigned</option>
-                    <!-- Sprint options will be populated dynamically -->
-                </select>
-            </div>
-            <div style="display: flex; gap: 1rem; justify-content: flex-end;">
-                <button type="button" class="btn btn-secondary" onclick="hideModal('editStoryModal')">Cancel</button>
-                <button type="submit" class="btn btn-primary">Update Story</button>
-            </div>
-        </form>
+        </div>
     </div>
 </div>
 
-<style>
-.story-card {
-    background: white;
-    border-radius: 8px;
-    border: 1px solid #dfe1e6;
-    padding: 1rem;
-    margin-bottom: 0.5rem;
-    transition: all 0.2s;
-    cursor: pointer;
-}
-
-.story-card:hover {
-    border-color: #0052cc;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.story-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: start;
-    margin-bottom: 0.5rem;
-}
-
-.story-id {
-    background: #0052cc;
-    color: white;
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
-    font-size: 0.8rem;
-    font-weight: 600;
-}
-
-.story-points {
-    background: #ffab00;
-    color: white;
-    padding: 0.25rem 0.5rem;
-    border-radius: 50%;
-    font-weight: bold;
-    min-width: 32px;
-    height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.9rem;
-}
-
-.story-title {
-    font-weight: 600;
-    margin: 0.5rem 0;
-    color: #172b4d;
-}
-
-.story-meta {
-    display: flex;
-    gap: 1rem;
-    align-items: center;
-    font-size: 0.8rem;
-    color: #6b778c;
-    flex-wrap: wrap;
-}
-
-.story-actions {
-    display: flex;
-    gap: 0.5rem;
-    margin-top: 0.5rem;
-}
-
-.criteria-item {
-    display: flex;
-    gap: 0.5rem;
-    margin-bottom: 0.5rem;
-}
-
-.empty-state {
-    text-align: center;
-    padding: 3rem;
-    color: #6b778c;
-}
-
-.empty-state h4 {
-    margin-bottom: 0.5rem;
-}
-</style>
-{% endblock %}
-
-{% block scripts %}
 <script>
-const projectId = {{ project.id }};
-let allStories = [];
-let allSprints = [];
+// Basic filtering functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const sprintFilter = document.getElementById('sprintFilter');
+    const statusFilter = document.getElementById('statusFilter');
+    const searchInput = document.getElementById('searchStories');
+    const tableRows = document.querySelectorAll('#storiesTable tbody tr');
 
-// Load all data
-async function loadBacklogData() {
-    try {
-        // Load stories and sprints
-        const [stories, sprints] = await Promise.all([
-            makeRequest(`/api/projects/${projectId}/stories`),
-            makeRequest(`/api/projects/${projectId}/sprints`)
-        ]);
-        
-        allStories = stories;
-        allSprints = sprints;
-        
-        populateSprintOptions();
-        renderStories(allStories);
-        updateStoryCount(allStories.length);
-        
-    } catch (error) {
-        console.error('Failed to load backlog data:', error);
-        showAlert('Failed to load backlog data', 'error');
+    function filterTable() {
+        const sprintValue = sprintFilter.value;
+        const statusValue = statusFilter.value;
+        const searchValue = searchInput.value.toLowerCase();
+
+        tableRows.forEach(row => {
+            const sprintId = row.getAttribute('data-sprint-id');
+            const status = row.getAttribute('data-status');
+            const text = row.textContent.toLowerCase();
+
+            let showRow = true;
+
+            // Sprint filter
+            if (sprintValue && sprintValue !== sprintId) {
+                showRow = false;
+            }
+
+            // Status filter
+            if (statusValue && statusValue !== status) {
+                showRow = false;
+            }
+
+            // Search filter
+            if (searchValue && !text.includes(searchValue)) {
+                showRow = false;
+            }
+
+            row.style.display = showRow ? '' : 'none';
+        });
     }
-}
 
-function populateSprintOptions() {
-    const sprintSelect = document.getElementById('filterSprint');
-    const editSprintSelect = document.getElementById('editStorySprint');
-    
-    // Clear existing options except default ones
-    while (sprintSelect.children.length > 2) {
-        sprintSelect.removeChild(sprintSelect.lastChild);
-    }
-    while (editSprintSelect.children.length > 1) {
-        editSprintSelect.removeChild(editSprintSelect.lastChild);
-    }
-    
-    allSprints.forEach(sprint => {
-        const option1 = document.createElement('option');
-        option1.value = sprint.id;
-        option1.textContent = sprint.name;
-        sprintSelect.appendChild(option1);
-        
-        const option2 = document.createElement('option');
-        option2.value = sprint.id;
-        option2.textContent = sprint.name;
-        editSprintSelect.appendChild(option2);
-    });
-}
-
-function renderStories(stories) {
-    const container = document.getElementById('storiesContainer');
-    
-    if (stories.length === 0) {
-        container.innerHTML = `
-            <div class="empty-state">
-                <h4>No user stories found</h4>
-                <p>Create your first user story to get started!</p>
-            </div>
-        `;
-        return;
-    }
-    
-    let html = '';
-    stories.forEach(story => {
-        const sprintName = story.sprint_name || 'Unassigned';
-        const statusBadge = getStatusBadge(story.status);
-        
-        html += `
-            <div class="story-card" onclick="editStory(${story.id})">
-                <div class="story-header">
-                    <div class="story-id">${story.story_id || 'US-' + story.id}</div>
-                    <div class="story-points">${story.story_points}</div>
-                </div>
-                <div class="story-title">${story.title}</div>
-                <div class="story-meta">
-                    ${statusBadge}
-                    <span>📋 ${sprintName}</span>
-                    ${story.assignee ? `<span>👤 ${story.assignee}</span>` : ''}
-                </div>
-                <div class="story-actions" onclick="event.stopPropagation();">
-                    <button class="btn btn-secondary" onclick="editStory(${story.id})" style="padding: 0.25rem 0.75rem; font-size: 0.8rem;">Edit</button>
-                    <button class="btn btn-danger" onclick="deleteStory(${story.id})" style="padding: 0.25rem 0.75rem; font-size: 0.8rem;">Delete</button>
-                </div>
-            </div>
-        `;
-    });
-    
-    container.innerHTML = html;
-}
-
-function getStatusBadge(status) {
-    const statusMap = {
-        'todo': '<span class="status-badge status-planning">To Do</span>',
-        'in-progress': '<span class="status-badge status-in-progress">In Progress</span>',
-        'done': '<span class="status-badge status-completed">Done</span>'
-    };
-    return statusMap[status] || '<span class="status-badge status-planning">Unknown</span>';
-}
-
-function updateStoryCount(count) {
-    document.getElementById('storyCount').textContent = `${count} user stories`;
-}
-
-// Filter functionality
-function filterStories() {
-    const searchTerm = document.getElementById('searchStories').value.toLowerCase();
-    const statusFilter = document.getElementById('filterStatus').value;
-    const sprintFilter = document.getElementById('filterSprint').value;
-    
-    let filtered = allStories.filter(story => {
-        const matchesSearch = !searchTerm || 
-            story.title.toLowerCase().includes(searchTerm) ||
-            story.description.toLowerCase().includes(searchTerm);
-        
-        const matchesStatus = !statusFilter || story.status === statusFilter;
-        
-        const matchesSprint = !sprintFilter || 
-            (sprintFilter === 'unassigned' && !story.sprint_id) ||
-            (sprintFilter !== 'unassigned' && story.sprint_id == sprintFilter);
-        
-        return matchesSearch && matchesStatus && matchesSprint;
-    });
-    
-    renderStories(filtered);
-    updateStoryCount(filtered.length);
-}
-
-function clearFilters() {
-    document.getElementById('searchStories').value = '';
-    document.getElementById('filterStatus').value = '';
-    document.getElementById('filterSprint').value = '';
-    renderStories(allStories);
-    updateStoryCount(allStories.length);
-}
-
-// Event listeners for filters
-document.getElementById('searchStories').addEventListener('input', filterStories);
-document.getElementById('filterStatus').addEventListener('change', filterStories);
-document.getElementById('filterSprint').addEventListener('change', filterStories);
-
-// Create story functionality
-function addCriteria() {
-    const container = document.getElementById('criteriaContainer');
-    const criteriaItem = document.createElement('div');
-    criteriaItem.className = 'criteria-item';
-    criteriaItem.style.cssText = 'display: flex; gap: 0.5rem; margin-bottom: 0.5rem;';
-    criteriaItem.innerHTML = `
-        <input type="text" class="form-control criteria-input" placeholder="Acceptance criterion">
-        <button type="button" class="btn btn-danger" onclick="removeCriteria(this)" style="padding: 0.5rem;">×</button>
-    `;
-    container.appendChild(criteriaItem);
-}
-
-function removeCriteria(button) {
-    button.parentElement.remove();
-}
-
-document.getElementById('createStoryForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    
-    const criteriaInputs = document.querySelectorAll('#createStoryModal .criteria-input');
-    const acceptanceCriteria = Array.from(criteriaInputs)
-        .map(input => input.value.trim())
-        .filter(value => value.length > 0);
-    
-    const storyData = {
-        title: document.getElementById('storyTitle').value,
-        description: document.getElementById('storyDescription').value,
-        story_points: parseInt(document.getElementById('storyPoints').value),
-        status: document.getElementById('storyStatus').value,
-        assignee: document.getElementById('storyAssignee').value,
-        acceptance_criteria: acceptanceCriteria,
-        project_id: projectId
-    };
-    
-    try {
-        await makeRequest('/api/stories', 'POST', storyData);
-        showAlert('User story created successfully!');
-        hideModal('createStoryModal');
-        document.getElementById('createStoryForm').reset();
-        loadBacklogData();
-    } catch (error) {
-        // Error already shown by makeRequest
-    }
+    sprintFilter.addEventListener('change', filterTable);
+    statusFilter.addEventListener('change', filterTable);
+    searchInput.addEventListener('input', filterTable);
 });
 
-// Edit story functionality
-async function editStory(storyId) {
-    try {
-        const story = allStories.find(s => s.id === storyId);
-        if (!story) return;
-        
-        document.getElementById('editStoryId').value = story.id;
-        document.getElementById('editStoryTitle').value = story.title;
-        document.getElementById('editStoryDescription').value = story.description || '';
-        document.getElementById('editStoryPoints').value = story.story_points;
-        document.getElementById('editStoryStatus').value = story.status;
-        document.getElementById('editStoryAssignee').value = story.assignee || '';
-        document.getElementById('editStorySprint').value = story.sprint_id || '';
-        
-        showModal('editStoryModal');
-    } catch (error) {
-        showAlert('Failed to load story details', 'error');
-    }
+// Placeholder functions for future functionality
+function editStory(storyId) {
+    alert('Edit story functionality coming soon! Story ID: ' + storyId);
 }
 
-document.getElementById('editStoryForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    
-    const storyId = document.getElementById('editStoryId').value;
-    const storyData = {
-        title: document.getElementById('editStoryTitle').value,
-        description: document.getElementById('editStoryDescription').value,
-        story_points: parseInt(document.getElementById('editStoryPoints').value),
-        status: document.getElementById('editStoryStatus').value,
-        assignee: document.getElementById('editStoryAssignee').value,
-        sprint_id: document.getElementById('editStorySprint').value || null
-    };
-    
-    try {
-        await makeRequest(`/api/stories/${storyId}`, 'PUT', storyData);
-        showAlert('User story updated successfully!');
-        hideModal('editStoryModal');
-        loadBacklogData();
-    } catch (error) {
-        // Error already shown by makeRequest
-    }
-});
-
-// Delete story
-async function deleteStory(storyId) {
-    if (confirm('Are you sure you want to delete this user story? This action cannot be undone.')) {
-        try {
-            await makeRequest(`/api/stories/${storyId}`, 'DELETE');
-            showAlert('User story deleted successfully!');
-            loadBacklogData();
-        } catch (error) {
-            // Error already shown by makeRequest
-        }
-    }
+function viewStory(storyId) {
+    alert('View story details functionality coming soon! Story ID: ' + storyId);
 }
 
-// Load data on page load
-document.addEventListener('DOMContentLoaded', loadBacklogData);
+function deleteStory(storyId) {
+    if (confirm('Delete story functionality coming soon! Would you like to proceed with Story ID: ' + storyId + '?')) {
+        alert('Delete functionality will be implemented soon.');
+    }
+}
 </script>
 {% endblock %}
