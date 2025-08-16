@@ -1,4 +1,5 @@
-# app.py - Main Flask Application
+# app.py - Main Flask Application (Fixed for Flask 2.3+)
+import os
 from flask import Flask, render_template, request, jsonify, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
@@ -6,8 +7,16 @@ from datetime import datetime
 import json
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'your-secret-key-here'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///project_manager.db'
+
+# Production configuration
+if os.environ.get('DATABASE_URL'):
+    # Production (Render with PostgreSQL)
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
+else:
+    # Development (Local with SQLite)
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///project_manager.db'
+
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'your-secret-key-here')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
@@ -391,10 +400,24 @@ def get_analytics(project_id):
         'average_points_per_sprint': round(total_story_points / total_sprints, 2) if total_sprints > 0 else 0
     })
 
-# Initialize database
-@app.before_first_request
-def create_tables():
-    db.create_all()
+# Initialize database function
+def initialize_database():
+    """Initialize database with sample data if it's empty"""
+    try:
+        if not Project.query.first():
+            from init_db import init_database
+            init_database()
+            print("✅ Database initialized with sample data")
+    except Exception as e:
+        print(f"⚠️ Could not initialize sample data: {e}")
 
+# Production initialization
 if __name__ == '__main__':
-    app.run(debug=True)
+    port = int(os.environ.get('PORT', 5000))
+    debug = os.environ.get('FLASK_ENV') == 'development'
+    
+    with app.app_context():
+        db.create_all()
+        initialize_database()
+    
+    app.run(host='0.0.0.0', port=port, debug=debug)
