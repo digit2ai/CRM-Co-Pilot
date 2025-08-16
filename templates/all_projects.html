@@ -1,0 +1,215 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2><i class="fas fa-folder"></i> {{ title }}</h2>
+                    <p class="text-muted">Manage and view all your projects</p>
+                </div>
+                <div>
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to Dashboard
+                    </a>
+                    <button class="btn btn-primary" data-toggle="modal" data-target="#addProjectModal">
+                        <i class="fas fa-plus"></i> New Project
+                    </button>
+                </div>
+            </div>
+
+            <!-- Projects Grid -->
+            {% if projects %}
+                <div class="row">
+                    {% for project in projects %}
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card h-100 project-card" data-project-id="{{ project.id }}">
+                            <div class="card-header bg-primary text-white">
+                                <h5 class="card-title mb-0">{{ project.name }}</h5>
+                            </div>
+                            <div class="card-body">
+                                <p class="card-text">{{ project.description[:100] }}{% if project.description|length > 100 %}...{% endif %}</p>
+                                
+                                <!-- Project Stats -->
+                                <div class="row text-center mb-3">
+                                    <div class="col-4">
+                                        <div class="border-right">
+                                            <h5 class="mb-0 text-primary">{{ project.sprints|length }}</h5>
+                                            <small class="text-muted">Sprints</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="border-right">
+                                            <h5 class="mb-0 text-info">{{ project.sprints|sum(attribute='story_points') or 0 }}</h5>
+                                            <small class="text-muted">Points</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-4">
+                                        <h5 class="mb-0 text-success">
+                                            {% set total_stories = 0 %}
+                                            {% for sprint in project.sprints %}
+                                                {% for epic in sprint.epics %}
+                                                    {% set total_stories = total_stories + epic.user_stories|length %}
+                                                {% endfor %}
+                                            {% endfor %}
+                                            {{ total_stories }}
+                                        </h5>
+                                        <small class="text-muted">Stories</small>
+                                    </div>
+                                </div>
+
+                                <!-- Status Badge -->
+                                <div class="mb-3">
+                                    <span class="badge badge-{{ 'success' if project.status == 'active' else 'warning' if project.status == 'on-hold' else 'secondary' }} badge-lg">
+                                        {{ project.status|title }}
+                                    </span>
+                                </div>
+
+                                <!-- Quick Actions -->
+                                <div class="btn-group btn-group-sm w-100" role="group">
+                                    <a href="{{ url_for('project_detail', project_id=project.id) }}" class="btn btn-outline-primary" onclick="event.stopPropagation();">
+                                        <i class="fas fa-eye"></i> View
+                                    </a>
+                                    <a href="{{ url_for('project_backlog', project_id=project.id) }}" class="btn btn-outline-info" onclick="event.stopPropagation();">
+                                        <i class="fas fa-list-ul"></i> Backlog
+                                    </a>
+                                    <button class="btn btn-outline-secondary" onclick="editProject({{ project.id }}); event.stopPropagation();">
+                                        <i class="fas fa-edit"></i> Edit
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-footer text-muted">
+                                <small>Created: {{ project.created_at.strftime('%b %d, %Y') if project.created_at else 'Unknown' }}</small>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-folder-open fa-4x text-muted mb-3"></i>
+                    <h3 class="text-muted">No Projects Found</h3>
+                    <p class="text-muted mb-4">
+                        {% if title == "Active Projects" %}
+                            You don't have any active projects at the moment.
+                        {% else %}
+                            Get started by creating your first project!
+                        {% endif %}
+                    </p>
+                    <button class="btn btn-primary btn-lg" data-toggle="modal" data-target="#addProjectModal">
+                        <i class="fas fa-plus"></i> Create First Project
+                    </button>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Add Project Modal -->
+<div class="modal fade" id="addProjectModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Create New Project</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <form id="projectForm">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="projectName">Project Name</label>
+                        <input type="text" class="form-control" id="projectName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="projectDescription">Description</label>
+                        <textarea class="form-control" id="projectDescription" rows="3"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="projectStatus">Status</label>
+                        <select class="form-control" id="projectStatus">
+                            <option value="active">Active</option>
+                            <option value="on-hold">On Hold</option>
+                            <option value="completed">Completed</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Project</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+.project-card {
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.project-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+}
+
+.badge-lg {
+    font-size: 0.9em;
+    padding: 0.5em 0.8em;
+}
+
+.border-right {
+    border-right: 1px solid #dee2e6;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Make project cards clickable
+    document.querySelectorAll('.project-card').forEach(card => {
+        card.addEventListener('click', function() {
+            const projectId = this.getAttribute('data-project-id');
+            window.location.href = `/project/${projectId}`;
+        });
+    });
+});
+
+// Project form submission
+document.getElementById('projectForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const projectData = {
+        name: document.getElementById('projectName').value,
+        description: document.getElementById('projectDescription').value,
+        status: document.getElementById('projectStatus').value
+    };
+    
+    fetch('/api/projects', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(projectData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.id) {
+            location.reload();
+        }
+    })
+    .catch(error => {
+        console.error('Error creating project:', error);
+        alert('Error creating project. Please try again.');
+    });
+});
+
+function editProject(projectId) {
+    alert('Edit project functionality coming soon!');
+}
+</script>
+{% endblock %}

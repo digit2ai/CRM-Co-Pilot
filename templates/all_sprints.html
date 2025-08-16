@@ -1,0 +1,270 @@
+{% extends "base.html" %}
+
+{% block title %}All Sprints{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2><i class="fas fa-calendar"></i> All Sprints</h2>
+                    <p class="text-muted">Overview of all sprints across projects</p>
+                </div>
+                <div>
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to Dashboard
+                    </a>
+                    <button class="btn btn-primary" onclick="createSprint()">
+                        <i class="fas fa-plus"></i> New Sprint
+                    </button>
+                </div>
+            </div>
+
+            <!-- Filter Tabs -->
+            <ul class="nav nav-tabs mb-4" id="sprintTabs" role="tablist">
+                <li class="nav-item">
+                    <a class="nav-link active" id="all-tab" data-toggle="tab" href="#all" role="tab">
+                        All Sprints <span class="badge badge-secondary ml-1">{{ sprints|length }}</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="active-tab" data-toggle="tab" href="#active" role="tab">
+                        Active <span class="badge badge-success ml-1">{{ sprints|selectattr('status', 'equalto', 'in-progress')|list|length }}</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="planned-tab" data-toggle="tab" href="#planned" role="tab">
+                        Planned <span class="badge badge-info ml-1">{{ sprints|selectattr('status', 'equalto', 'planned')|list|length }}</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="completed-tab" data-toggle="tab" href="#completed" role="tab">
+                        Completed <span class="badge badge-primary ml-1">{{ sprints|selectattr('status', 'equalto', 'completed')|list|length }}</span>
+                    </a>
+                </li>
+            </ul>
+
+            <!-- Sprint Content -->
+            <div class="tab-content" id="sprintTabContent">
+                <!-- All Sprints Tab -->
+                <div class="tab-pane fade show active" id="all" role="tabpanel">
+                    {% if sprints %}
+                        <div class="row">
+                            {% for sprint in sprints %}
+                            <div class="col-md-6 col-lg-4 mb-4">
+                                <div class="card h-100 sprint-card" data-sprint-id="{{ sprint.id }}">
+                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                        <h6 class="mb-0 font-weight-bold">{{ sprint.name }}</h6>
+                                        <span class="badge badge-{{ 'success' if sprint.status == 'completed' else 'warning' if sprint.status == 'in-progress' else 'secondary' }}">
+                                            {{ sprint.status|title }}
+                                        </span>
+                                    </div>
+                                    <div class="card-body">
+                                        <p class="text-muted small mb-2">
+                                            <i class="fas fa-project-diagram"></i> {{ sprint.project.name }}
+                                        </p>
+                                        <p class="card-text">{{ sprint.goal[:80] }}{% if sprint.goal|length > 80 %}...{% endif %}</p>
+                                        
+                                        <!-- Sprint Stats -->
+                                        <div class="row text-center mb-3">
+                                            <div class="col-4">
+                                                <h6 class="mb-0 text-primary">{{ sprint.epics|length }}</h6>
+                                                <small class="text-muted">Epics</small>
+                                            </div>
+                                            <div class="col-4">
+                                                <h6 class="mb-0 text-info">{{ sprint.story_points }}</h6>
+                                                <small class="text-muted">Points</small>
+                                            </div>
+                                            <div class="col-4">
+                                                <h6 class="mb-0 text-success">
+                                                    {% set total_stories = 0 %}
+                                                    {% for epic in sprint.epics %}
+                                                        {% set total_stories = total_stories + epic.user_stories|length %}
+                                                    {% endfor %}
+                                                    {{ total_stories }}
+                                                </h6>
+                                                <small class="text-muted">Stories</small>
+                                            </div>
+                                        </div>
+
+                                        <!-- Duration -->
+                                        <div class="mb-2">
+                                            <small class="text-muted">
+                                                <i class="fas fa-clock"></i> {{ sprint.duration or 'Duration not set' }}
+                                            </small>
+                                        </div>
+                                    </div>
+                                    <div class="card-footer">
+                                        <div class="btn-group btn-group-sm w-100" role="group">
+                                            <a href="{{ url_for('sprint_detail', sprint_id=sprint.id) }}" class="btn btn-outline-primary" onclick="event.stopPropagation();">
+                                                <i class="fas fa-eye"></i> View Stories
+                                            </a>
+                                            <a href="{{ url_for('project_detail', project_id=sprint.project.id) }}" class="btn btn-outline-info" onclick="event.stopPropagation();">
+                                                <i class="fas fa-project-diagram"></i> Project
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-calendar-times fa-4x text-muted mb-3"></i>
+                            <h3 class="text-muted">No Sprints Found</h3>
+                            <p class="text-muted mb-4">Create your first sprint to start organizing your work!</p>
+                            <button class="btn btn-primary btn-lg" onclick="createSprint()">
+                                <i class="fas fa-plus"></i> Create First Sprint
+                            </button>
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Active Sprints Tab -->
+                <div class="tab-pane fade" id="active" role="tabpanel">
+                    <div class="row">
+                        {% for sprint in sprints if sprint.status == 'in-progress' %}
+                        <div class="col-md-6 col-lg-4 mb-4">
+                            <div class="card h-100 sprint-card border-warning" data-sprint-id="{{ sprint.id }}">
+                                <div class="card-header bg-warning text-dark">
+                                    <h6 class="mb-0 font-weight-bold">{{ sprint.name }}</h6>
+                                </div>
+                                <div class="card-body">
+                                    <p class="text-muted small mb-2">
+                                        <i class="fas fa-project-diagram"></i> {{ sprint.project.name }}
+                                    </p>
+                                    <p class="card-text">{{ sprint.goal }}</p>
+                                    <div class="text-center">
+                                        <h4 class="text-warning mb-0">{{ sprint.story_points }}</h4>
+                                        <small class="text-muted">Story Points</small>
+                                    </div>
+                                </div>
+                                <div class="card-footer">
+                                    <a href="{{ url_for('sprint_detail', sprint_id=sprint.id) }}" class="btn btn-warning btn-sm btn-block" onclick="event.stopPropagation();">
+                                        <i class="fas fa-play"></i> View Active Sprint
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="col-12">
+                            <div class="text-center py-5">
+                                <i class="fas fa-pause-circle fa-3x text-muted mb-3"></i>
+                                <h4 class="text-muted">No Active Sprints</h4>
+                                <p class="text-muted">Start a sprint to begin tracking active work!</p>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Planned Sprints Tab -->
+                <div class="tab-pane fade" id="planned" role="tabpanel">
+                    <div class="row">
+                        {% for sprint in sprints if sprint.status == 'planned' %}
+                        <div class="col-md-6 col-lg-4 mb-4">
+                            <div class="card h-100 sprint-card border-info" data-sprint-id="{{ sprint.id }}">
+                                <div class="card-header bg-info text-white">
+                                    <h6 class="mb-0 font-weight-bold">{{ sprint.name }}</h6>
+                                </div>
+                                <div class="card-body">
+                                    <p class="text-muted small mb-2">
+                                        <i class="fas fa-project-diagram"></i> {{ sprint.project.name }}
+                                    </p>
+                                    <p class="card-text">{{ sprint.goal }}</p>
+                                    <div class="text-center">
+                                        <h4 class="text-info mb-0">{{ sprint.story_points }}</h4>
+                                        <small class="text-muted">Story Points Planned</small>
+                                    </div>
+                                </div>
+                                <div class="card-footer">
+                                    <a href="{{ url_for('sprint_detail', sprint_id=sprint.id) }}" class="btn btn-info btn-sm btn-block" onclick="event.stopPropagation();">
+                                        <i class="fas fa-eye"></i> View Planned Sprint
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="col-12">
+                            <div class="text-center py-5">
+                                <i class="fas fa-calendar-plus fa-3x text-muted mb-3"></i>
+                                <h4 class="text-muted">No Planned Sprints</h4>
+                                <p class="text-muted">Plan your next sprint to prepare for upcoming work!</p>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Completed Sprints Tab -->
+                <div class="tab-pane fade" id="completed" role="tabpanel">
+                    <div class="row">
+                        {% for sprint in sprints if sprint.status == 'completed' %}
+                        <div class="col-md-6 col-lg-4 mb-4">
+                            <div class="card h-100 sprint-card border-success" data-sprint-id="{{ sprint.id }}">
+                                <div class="card-header bg-success text-white">
+                                    <h6 class="mb-0 font-weight-bold">{{ sprint.name }}</h6>
+                                </div>
+                                <div class="card-body">
+                                    <p class="text-muted small mb-2">
+                                        <i class="fas fa-project-diagram"></i> {{ sprint.project.name }}
+                                    </p>
+                                    <p class="card-text">{{ sprint.goal }}</p>
+                                    <div class="text-center">
+                                        <h4 class="text-success mb-0">{{ sprint.story_points }}</h4>
+                                        <small class="text-muted">Points Completed</small>
+                                    </div>
+                                </div>
+                                <div class="card-footer">
+                                    <a href="{{ url_for('sprint_detail', sprint_id=sprint.id) }}" class="btn btn-success btn-sm btn-block" onclick="event.stopPropagation();">
+                                        <i class="fas fa-check"></i> View Completed Sprint
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="col-12">
+                            <div class="text-center py-5">
+                                <i class="fas fa-check-circle fa-3x text-muted mb-3"></i>
+                                <h4 class="text-muted">No Completed Sprints</h4>
+                                <p class="text-muted">Complete your first sprint to see it here!</p>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.sprint-card {
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.sprint-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Make sprint cards clickable
+    document.querySelectorAll('.sprint-card').forEach(card => {
+        card.addEventListener('click', function() {
+            const sprintId = this.getAttribute('data-sprint-id');
+            window.location.href = `/sprint/${sprintId}`;
+        });
+    });
+});
+
+function createSprint() {
+    alert('Create sprint functionality coming soon!');
+}
+</script>
+{% endblock %}
