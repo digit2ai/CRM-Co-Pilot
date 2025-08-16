@@ -1,6 +1,6 @@
 # app.py - Simplified Flask Application
 import os
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 import json
@@ -133,6 +133,30 @@ def project_detail(project_id):
     project = Project.query.get_or_404(project_id)
     return render_template('project_detail.html', project=project)
 
+@app.route('/project/<int:project_id>/backlog')
+def project_backlog(project_id):
+    """Display project backlog with user stories"""
+    try:
+        project = Project.query.get_or_404(project_id)
+        
+        # Get all user stories for this project through sprints and epics
+        user_stories = []
+        for sprint in project.sprints:
+            for epic in sprint.epics:
+                user_stories.extend(epic.user_stories)
+        
+        # Get sprints for this project
+        sprints = Sprint.query.filter_by(project_id=project_id).all()
+        
+        return render_template('backlog.html', 
+                             project=project, 
+                             user_stories=user_stories,
+                             sprints=sprints)
+    except Exception as e:
+        print(f"Backlog error: {e}")
+        # Redirect to project detail if backlog.html doesn't exist
+        return redirect(url_for('project_detail', project_id=project_id))
+
 # API Routes
 @app.route('/api/projects', methods=['GET'])
 def get_projects():
@@ -233,12 +257,22 @@ def get_analytics(project_id):
     total_sprints = len(project.sprints)
     total_story_points = sum(s.story_points for s in project.sprints)
     
+    # Count user stories across all sprints and epics
+    total_stories = 0
+    completed_stories = 0
+    for sprint in project.sprints:
+        for epic in sprint.epics:
+            total_stories += len(epic.user_stories)
+            completed_stories += len([story for story in epic.user_stories if story.status == 'Done'])
+    
+    completion_rate = round((completed_stories / total_stories * 100), 2) if total_stories > 0 else 0
+    
     return jsonify({
         'total_sprints': total_sprints,
         'total_story_points': total_story_points,
-        'total_stories': 0,
-        'completed_stories': 0,
-        'completion_rate': 0,
+        'total_stories': total_stories,
+        'completed_stories': completed_stories,
+        'completion_rate': completion_rate,
         'average_points_per_sprint': round(total_story_points / total_sprints, 2) if total_sprints > 0 else 0
     })
 
