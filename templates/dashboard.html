@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Project Manager{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+    <h2>Project Dashboard</h2>
+    <button class="btn btn-primary" onclick="showModal('createProjectModal')">
+        + Create Project
+    </button>
+</div>
+
+<div class="dashboard-grid">
+    <div class="metric-card">
+        <div class="metric-value" id="totalProjects">{{ projects|length }}</div>
+        <div class="metric-label">Total Projects</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-value" id="activeProjects">
+            {{ projects|selectattr("status", "equalto", "active")|list|length }}
+        </div>
+        <div class="metric-label">Active Projects</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-value" id="totalSprints">0</div>
+        <div class="metric-label">Total Sprints</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-value" id="totalStoryPoints">0</div>
+        <div class="metric-label">Total Story Points</div>
+    </div>
+</div>
+
+<div class="card">
+    <h3>Your Projects</h3>
+    <div id="projectsList">
+        {% for project in projects %}
+        <div class="project-card" onclick="window.location.href='{{ url_for('project_detail', project_id=project.id) }}'">
+            <div style="display: flex; justify-content: space-between; align-items: start;">
+                <div>
+                    <h4>{{ project.name }}</h4>
+                    <p style="color: #6b778c; margin: 0.5rem 0;">{{ project.description }}</p>
+                    <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                        <span class="status-badge status-{{ project.status }}">{{ project.status.title() }}</span>
+                        <span style="color: #6b778c;">{{ project.sprints|length }} sprints</span>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 0.5rem;">
+                    <button class="btn btn-secondary" onclick="event.stopPropagation(); editProject({{ project.id }})">Edit</button>
+                    <button class="btn btn-danger" onclick="event.stopPropagation(); deleteProject({{ project.id }})">Delete</button>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+        
+        {% if not projects %}
+        <div style="text-align: center; padding: 2rem; color: #6b778c;">
+            <h4>No projects yet</h4>
+            <p>Create your first project to get started!</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Create Project Modal -->
+<div id="createProjectModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="hideModal('createProjectModal')">&times;</span>
+        <h3>Create New Project</h3>
+        <form id="createProjectForm">
+            <div class="form-group">
+                <label for="projectName">Project Name *</label>
+                <input type="text" id="projectName" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="projectDescription">Description</label>
+                <textarea id="projectDescription" class="form-control" rows="3"></textarea>
+            </div>
+            <div class="form-group">
+                <label for="projectStatus">Status</label>
+                <select id="projectStatus" class="form-control">
+                    <option value="active">Active</option>
+                    <option value="planning">Planning</option>
+                    <option value="on-hold">On Hold</option>
+                    <option value="completed">Completed</option>
+                </select>
+            </div>
+            <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                <button type="button" class="btn btn-secondary" onclick="hideModal('createProjectModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Create Project</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Project Modal -->
+<div id="editProjectModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="hideModal('editProjectModal')">&times;</span>
+        <h3>Edit Project</h3>
+        <form id="editProjectForm">
+            <input type="hidden" id="editProjectId">
+            <div class="form-group">
+                <label for="editProjectName">Project Name *</label>
+                <input type="text" id="editProjectName" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="editProjectDescription">Description</label>
+                <textarea id="editProjectDescription" class="form-control" rows="3"></textarea>
+            </div>
+            <div class="form-group">
+                <label for="editProjectStatus">Status</label>
+                <select id="editProjectStatus" class="form-control">
+                    <option value="active">Active</option>
+                    <option value="planning">Planning</option>
+                    <option value="on-hold">On Hold</option>
+                    <option value="completed">Completed</option>
+                </select>
+            </div>
+            <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                <button type="button" class="btn btn-secondary" onclick="hideModal('editProjectModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Update Project</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Load dashboard metrics
+    async function loadDashboardMetrics() {
+        try {
+            const projects = await makeRequest('/api/projects');
+            let totalSprints = 0;
+            let totalStoryPoints = 0;
+
+            projects.forEach(project => {
+                totalSprints += project.sprint_count;
+                totalStoryPoints += project.total_story_points;
+            });
+
+            document.getElementById('totalSprints').textContent = totalSprints;
+            document.getElementById('totalStoryPoints').textContent = totalStoryPoints;
+        } catch (error) {
+            console.error('Failed to load dashboard metrics:', error);
+        }
+    }
+
+    // Create project
+    document.getElementById('createProjectForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const projectData = {
+            name: document.getElementById('projectName').value,
+            description: document.getElementById('projectDescription').value,
+            status: document.getElementById('projectStatus').value
+        };
+
+        try {
+            await makeRequest('/api/projects', 'POST', projectData);
+            showAlert('Project created successfully!');
+            hideModal('createProjectModal');
+            location.reload();
+        } catch (error) {
+            // Error already shown by makeRequest
+        }
+    });
+
+    // Edit project
+    async function editProject(projectId) {
+        try {
+            const projects = await makeRequest('/api/projects');
+            const project = projects.find(p => p.id === projectId);
+            
+            if (project) {
+                document.getElementById('editProjectId').value = project.id;
+                document.getElementById('editProjectName').value = project.name;
+                document.getElementById('editProjectDescription').value = project.description || '';
+                document.getElementById('editProjectStatus').value = project.status;
+                showModal('editProjectModal');
+            }
+        } catch (error) {
+            // Error already shown by makeRequest
+        }
+    }
+
+    document.getElementById('editProjectForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const projectId = document.getElementById('editProjectId').value;
+        const projectData = {
+            name: document.getElementById('editProjectName').value,
+            description: document.getElementById('editProjectDescription').value,
+            status: document.getElementById('editProjectStatus').value
+        };
+
+        try {
+            await makeRequest(`/api/projects/${projectId}`, 'PUT', projectData);
+            showAlert('Project updated successfully!');
+            hideModal('editProjectModal');
+            location.reload();
+        } catch (error) {
+            // Error already shown by makeRequest
+        }
+    });
+
+    // Delete project
+    async function deleteProject(projectId) {
+        if (confirm('Are you sure you want to delete this project? This action cannot be undone.')) {
+            try {
+                await makeRequest(`/api/projects/${projectId}`, 'DELETE');
+                showAlert('Project deleted successfully!');
+                location.reload();
+            } catch (error) {
+                // Error already shown by makeRequest
+            }
+        }
+    }
+
+    // Load metrics on page load
+    document.addEventListener('DOMContentLoaded', loadDashboardMetrics);
+</script>
+{% endblock %}

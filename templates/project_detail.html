@@ -1,0 +1,251 @@
+{% extends "base.html" %}
+
+{% block title %}{{ project.name }} - Project Manager{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+    <div>
+        <h2>{{ project.name }}</h2>
+        <p style="color: #6b778c;">{{ project.description }}</p>
+    </div>
+    <div style="display: flex; gap: 1rem;">
+        <button class="btn btn-success" onclick="showModal('createSprintModal')">+ Add Sprint</button>
+        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">← Back to Dashboard</a>
+    </div>
+</div>
+
+<div class="dashboard-grid">
+    <div class="metric-card">
+        <div class="metric-value" id="sprintCount">0</div>
+        <div class="metric-label">Total Sprints</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-value" id="storyCount">0</div>
+        <div class="metric-label">User Stories</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-value" id="totalPoints">0</div>
+        <div class="metric-label">Story Points</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-value" id="completionRate">0%</div>
+        <div class="metric-label">Completion Rate</div>
+    </div>
+</div>
+
+<div class="card">
+    <h3>Sprints</h3>
+    <div id="sprintsList"></div>
+</div>
+
+<!-- Create Sprint Modal -->
+<div id="createSprintModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="hideModal('createSprintModal')">&times;</span>
+        <h3>Create New Sprint</h3>
+        <form id="createSprintForm">
+            <div class="form-group">
+                <label for="sprintName">Sprint Name *</label>
+                <input type="text" id="sprintName" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="sprintGoal">Sprint Goal</label>
+                <textarea id="sprintGoal" class="form-control" rows="2"></textarea>
+            </div>
+            <div class="form-group">
+                <label for="sprintDuration">Duration</label>
+                <input type="text" id="sprintDuration" class="form-control" placeholder="e.g., 2 weeks">
+            </div>
+            <div class="form-group">
+                <label for="sprintStatus">Status</label>
+                <select id="sprintStatus" class="form-control">
+                    <option value="planned">Planned</option>
+                    <option value="active">Active</option>
+                    <option value="completed">Completed</option>
+                </select>
+            </div>
+            <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                <button type="button" class="btn btn-secondary" onclick="hideModal('createSprintModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Create Sprint</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Sprint Modal -->
+<div id="editSprintModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="hideModal('editSprintModal')">&times;</span>
+        <h3>Edit Sprint</h3>
+        <form id="editSprintForm">
+            <input type="hidden" id="editSprintId">
+            <div class="form-group">
+                <label for="editSprintName">Sprint Name *</label>
+                <input type="text" id="editSprintName" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="editSprintGoal">Sprint Goal</label>
+                <textarea id="editSprintGoal" class="form-control" rows="2"></textarea>
+            </div>
+            <div class="form-group">
+                <label for="editSprintDuration">Duration</label>
+                <input type="text" id="editSprintDuration" class="form-control" placeholder="e.g., 2 weeks">
+            </div>
+            <div class="form-group">
+                <label for="editSprintStatus">Status</label>
+                <select id="editSprintStatus" class="form-control">
+                    <option value="planned">Planned</option>
+                    <option value="active">Active</option>
+                    <option value="completed">Completed</option>
+                </select>
+            </div>
+            <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                <button type="button" class="btn btn-secondary" onclick="hideModal('editSprintModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Update Sprint</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const projectId = {{ project.id }};
+
+    async function loadProjectData() {
+        try {
+            // Load sprints
+            const sprints = await makeRequest(`/api/projects/${projectId}/sprints`);
+            renderSprints(sprints);
+
+            // Load analytics
+            const analytics = await makeRequest(`/api/analytics/${projectId}`);
+            document.getElementById('sprintCount').textContent = analytics.total_sprints;
+            document.getElementById('storyCount').textContent = analytics.total_stories;
+            document.getElementById('totalPoints').textContent = analytics.total_story_points;
+            document.getElementById('completionRate').textContent = analytics.completion_rate + '%';
+
+        } catch (error) {
+            console.error('Failed to load project data:', error);
+        }
+    }
+
+    function renderSprints(sprints) {
+        const container = document.getElementById('sprintsList');
+        
+        if (sprints.length === 0) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 2rem; color: #6b778c;">
+                    <h4>No sprints yet</h4>
+                    <p>Create your first sprint to start planning!</p>
+                </div>
+            `;
+            return;
+        }
+
+        let html = '';
+        sprints.forEach(sprint => {
+            html += `
+                <div class="project-card">
+                    <div style="display: flex; justify-content: space-between; align-items: start;">
+                        <div>
+                            <h4>${sprint.name}</h4>
+                            <p style="color: #6b778c; margin: 0.5rem 0;">${sprint.goal || 'No goal set'}</p>
+                            <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                                <span class="status-badge status-${sprint.status}">${sprint.status.charAt(0).toUpperCase() + sprint.status.slice(1)}</span>
+                                <span style="color: #6b778c;">${sprint.duration || 'No duration set'}</span>
+                                <span style="color: #6b778c;">${sprint.epic_count} epics</span>
+                                <span style="color: #6b778c;">${sprint.story_points} points</span>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button class="btn btn-secondary" onclick="editSprint(${sprint.id})">Edit</button>
+                            <button class="btn btn-danger" onclick="deleteSprint(${sprint.id})">Delete</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+        container.innerHTML = html;
+    }
+
+    // Create sprint
+    document.getElementById('createSprintForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const sprintData = {
+            project_id: projectId,
+            name: document.getElementById('sprintName').value,
+            goal: document.getElementById('sprintGoal').value,
+            duration: document.getElementById('sprintDuration').value,
+            status: document.getElementById('sprintStatus').value
+        };
+
+        try {
+            await makeRequest('/api/sprints', 'POST', sprintData);
+            showAlert('Sprint created successfully!');
+            hideModal('createSprintModal');
+            loadProjectData();
+            document.getElementById('createSprintForm').reset();
+        } catch (error) {
+            // Error already shown by makeRequest
+        }
+    });
+
+    // Edit sprint
+    async function editSprint(sprintId) {
+        try {
+            const sprints = await makeRequest(`/api/projects/${projectId}/sprints`);
+            const sprint = sprints.find(s => s.id === sprintId);
+            
+            if (sprint) {
+                document.getElementById('editSprintId').value = sprint.id;
+                document.getElementById('editSprintName').value = sprint.name;
+                document.getElementById('editSprintGoal').value = sprint.goal || '';
+                document.getElementById('editSprintDuration').value = sprint.duration || '';
+                document.getElementById('editSprintStatus').value = sprint.status;
+                showModal('editSprintModal');
+            }
+        } catch (error) {
+            // Error already shown by makeRequest
+        }
+    }
+
+    document.getElementById('editSprintForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const sprintId = document.getElementById('editSprintId').value;
+        const sprintData = {
+            name: document.getElementById('editSprintName').value,
+            goal: document.getElementById('editSprintGoal').value,
+            duration: document.getElementById('editSprintDuration').value,
+            status: document.getElementById('editSprintStatus').value
+        };
+
+        try {
+            await makeRequest(`/api/sprints/${sprintId}`, 'PUT', sprintData);
+            showAlert('Sprint updated successfully!');
+            hideModal('editSprintModal');
+            loadProjectData();
+        } catch (error) {
+            // Error already shown by makeRequest
+        }
+    });
+
+    async function deleteSprint(sprintId) {
+        if (confirm('Are you sure you want to delete this sprint? This will also delete all epics and user stories within it.')) {
+            try {
+                await makeRequest(`/api/sprints/${sprintId}`, 'DELETE');
+                showAlert('Sprint deleted successfully!');
+                loadProjectData();
+            } catch (error) {
+                // Error already shown by makeRequest
+            }
+        }
+    }
+
+    // Load project data on page load
+    document.addEventListener('DOMContentLoaded', loadProjectData);
+</script>
+{% endblock %}
