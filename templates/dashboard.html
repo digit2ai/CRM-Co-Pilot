@@ -45,9 +45,12 @@
                         <span style="color: #6b778c;">{{ project.sprints|length }} sprints</span>
                     </div>
                 </div>
-                <div style="display: flex; gap: 0.5rem;">
-                    <button class="btn btn-secondary" onclick="event.stopPropagation(); editProject({{ project.id }})">Edit</button>
-                    <button class="btn btn-danger" onclick="event.stopPropagation(); deleteProject({{ project.id }})">Delete</button>
+                <div style="display: flex; gap: 0.5rem; flex-direction: column;">
+                    <div style="display: flex; gap: 0.5rem;">
+                        <a href="{{ url_for('project_backlog', project_id=project.id) }}" class="btn btn-primary" onclick="event.stopPropagation();" style="padding: 0.5rem 0.75rem; font-size: 0.8rem;">Backlog</a>
+                        <button class="btn btn-secondary" onclick="event.stopPropagation(); editProject({{ project.id }})" style="padding: 0.5rem 0.75rem; font-size: 0.8rem;">Edit</button>
+                    </div>
+                    <button class="btn btn-danger" onclick="event.stopPropagation(); deleteProject({{ project.id }})" style="padding: 0.5rem 0.75rem; font-size: 0.8rem;">Delete</button>
                 </div>
             </div>
         </div>
