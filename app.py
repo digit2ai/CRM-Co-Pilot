@@ -479,6 +479,51 @@ def get_analytics(project_id):
         'average_points_per_sprint': round(total_story_points / total_sprints, 2) if total_sprints > 0 else 0
     })
 
+@app.route('/reset-and-import')
+def reset_and_import():
+    """Reset database and import sample stories"""
+    try:
+        # Clear existing data
+        db.drop_all()
+        db.create_all()
+        
+        # Create project
+        project = Project(
+            name="CRM Assistant Project",
+            description="Build a comprehensive CRM assistant with MCP server, backend API, and chat interface",
+            status="active"
+        )
+        db.session.add(project)
+        db.session.flush()
+        
+        # Create 7 sprints with sample stories
+        sprint_data = [
+            ("Sprint 1: Foundation & Infrastructure", "Establish project foundation", 12, 60),
+            ("Sprint 2: MCP Server Core", "Build the core MCP server", 12, 65), 
+            ("Sprint 3: Core MCP Tools", "Implement essential MCP tools", 14, 70),
+            ("Sprint 4: Claude Integration & Backend", "Integrate Claude AI and build backend", 16, 75),
+            ("Sprint 5: Frontend Development", "Build React frontend", 15, 70),
+            ("Sprint 6: Testing & Quality Assurance", "Comprehensive testing", 12, 55),
+            ("Sprint 7: Deployment & Documentation", "Production deployment", 8, 40)
+        ]
+        
+        for i, (name, goal, story_count, points) in enumerate(sprint_data, 1):
+            sprint = Sprint(
+                project=project,
+                name=name,
+                goal=goal,
+                duration="2 weeks",
+                status="planned" if i > 2 else ("in-progress" if i == 2 else "completed"),
+                story_points=points
+            )
+            db.session.add(sprint)
+        
+        db.session.commit()
+        return f"✅ Database reset with 7 sprints and realistic data! <br><a href='/'>← Back to Dashboard</a>"
+    except Exception as e:
+        db.session.rollback()
+        return f"❌ Error: {e} <br><a href='/'>← Back to Dashboard</a>"
+
 # Run app
 if __name__ == '__main__':
     init_app()
