@@ -479,6 +479,51 @@ def get_analytics(project_id):
         'average_points_per_sprint': round(total_story_points / total_sprints, 2) if total_sprints > 0 else 0
     })
 
+# Add these routes to your app.py file 
+# Place them after your existing routes but before the API routes section
+# (after the project_backlog route and before the trigger_import route)
+
+@app.route('/projects')
+def all_projects():
+    """Show all projects"""
+    projects = Project.query.all()
+    return render_template('all_projects.html', projects=projects, title="All Projects")
+
+@app.route('/projects/active')
+def active_projects():
+    """Show only active projects"""
+    projects = Project.query.filter_by(status='active').all()
+    return render_template('all_projects.html', projects=projects, title="Active Projects")
+
+@app.route('/sprints')
+def all_sprints():
+    """Show all sprints across all projects"""
+    sprints = Sprint.query.join(Project).all()
+    return render_template('all_sprints.html', sprints=sprints)
+
+@app.route('/sprint/<int:sprint_id>')
+def sprint_detail(sprint_id):
+    """Show sprint details with user stories"""
+    sprint = Sprint.query.get_or_404(sprint_id)
+    
+    # Get all user stories for this sprint
+    user_stories = []
+    for epic in sprint.epics:
+        user_stories.extend(epic.user_stories)
+    
+    return render_template('sprint_detail.html', sprint=sprint, user_stories=user_stories)
+
+@app.route('/user-stories')
+def all_user_stories():
+    """Show all user stories across all projects"""
+    user_stories = UserStory.query.join(Epic).join(Sprint).join(Project).all()
+    return render_template('all_user_stories.html', user_stories=user_stories)
+
+@app.route('/user-story/<int:story_id>')
+def user_story_detail(story_id):
+    """Show detailed user story information"""
+    story = UserStory.query.get_or_404(story_id)
+    return render_template('user_story_detail.html', story=story)
 @app.route('/reset-and-import')
 def reset_and_import():
     """Reset database and import sample stories"""
