@@ -532,6 +532,44 @@ def all_user_stories():
         # Fallback: simple query
         user_stories = UserStory.query.all()
         return render_template('all_user_stories.html', user_stories=user_stories)
+
+# Add this temporary route to check your current data:
+
+@app.route('/debug-data')
+def debug_data():
+    """Debug route to check what data exists"""
+    try:
+        projects_count = Project.query.count()
+        sprints_count = Sprint.query.count()
+        epics_count = Epic.query.count()
+        stories_count = UserStory.query.count()
+        
+        # Get specific sprint 3 details
+        sprint3 = Sprint.query.filter_by(name='Sprint 3: Core MCP Tools').first()
+        sprint3_stories = 0
+        if sprint3:
+            for epic in sprint3.epics:
+                sprint3_stories += len(epic.user_stories)
+        
+        return f"""
+        <h2>Database Debug Info</h2>
+        <ul>
+            <li><strong>Projects:</strong> {projects_count}</li>
+            <li><strong>Sprints:</strong> {sprints_count}</li>
+            <li><strong>Epics:</strong> {epics_count}</li>
+            <li><strong>User Stories:</strong> {stories_count}</li>
+            <li><strong>Sprint 3 Stories:</strong> {sprint3_stories}</li>
+        </ul>
+        
+        <p><strong>Issue:</strong> You have {sprints_count} sprints but {stories_count} user stories.</p>
+        <p><strong>Solution:</strong> Run the improved /reset-and-import route to create real user stories.</p>
+        
+        <a href="/reset-and-import">🚀 Run Reset & Import</a> | 
+        <a href="/">← Back to Dashboard</a>
+        """
+        
+    except Exception as e:
+        return f"Error: {e}"
         
 
 @app.route('/user-story/<int:story_id>')
