@@ -513,20 +513,37 @@ def sprint_detail(sprint_id):
     
     return render_template('sprint_detail.html', sprint=sprint, user_stories=user_stories)
 
+# Replace the existing all_user_stories route in your app.py with this fixed version:
+
+# Replace your existing all_user_stories route with this:
+
 @app.route('/user-stories')
 def all_user_stories():
     """Show all user stories across all projects"""
-    user_stories = UserStory.query.join(Epic).join(Sprint).join(Project).all()
-    return render_template('all_user_stories.html', user_stories=user_stories)
+    try:
+        # Get all user stories with their relationships loaded
+        user_stories = UserStory.query.options(
+            db.joinedload(UserStory.epic).joinedload(Epic.sprint).joinedload(Sprint.project)
+        ).all()
+        
+        return render_template('all_user_stories.html', user_stories=user_stories)
+    except Exception as e:
+        print(f"Error loading user stories: {e}")
+        # Fallback: simple query
+        user_stories = UserStory.query.all()
+        return render_template('all_user_stories.html', user_stories=user_stories)
+        
 
 @app.route('/user-story/<int:story_id>')
 def user_story_detail(story_id):
     """Show detailed user story information"""
     story = UserStory.query.get_or_404(story_id)
     return render_template('user_story_detail.html', story=story)
+# Replace your existing reset-and-import route with this improved version:
+
 @app.route('/reset-and-import')
 def reset_and_import():
-    """Reset database and import sample stories"""
+    """Reset database and import sample stories with real user stories"""
     try:
         # Clear existing data
         db.drop_all()
@@ -541,30 +558,193 @@ def reset_and_import():
         db.session.add(project)
         db.session.flush()
         
-        # Create 7 sprints with sample stories
+        # Create sprints with epics and user stories
         sprint_data = [
-            ("Sprint 1: Foundation & Infrastructure", "Establish project foundation", 12, 60),
-            ("Sprint 2: MCP Server Core", "Build the core MCP server", 12, 65), 
-            ("Sprint 3: Core MCP Tools", "Implement essential MCP tools", 14, 70),
-            ("Sprint 4: Claude Integration & Backend", "Integrate Claude AI and build backend", 16, 75),
-            ("Sprint 5: Frontend Development", "Build React frontend", 15, 70),
-            ("Sprint 6: Testing & Quality Assurance", "Comprehensive testing", 12, 55),
-            ("Sprint 7: Deployment & Documentation", "Production deployment", 8, 40)
+            {
+                "name": "Sprint 1: Foundation & Infrastructure",
+                "goal": "Establish project foundation",
+                "duration": "2 weeks",
+                "status": "completed",
+                "epics": [
+                    {
+                        "epic_id": "FND",
+                        "name": "Foundation & Infrastructure",
+                        "goal": "Set up development environment and infrastructure",
+                        "stories": [
+                            {"title": "Repository Creation", "description": "Create GitHub repository with proper permissions", "points": 3, "status": "Done"},
+                            {"title": "Development Environment", "description": "Set up local development environment", "points": 5, "status": "Done"},
+                            {"title": "Railway CLI Setup", "description": "Configure Railway CLI for deployment", "points": 3, "status": "Done"},
+                            {"title": "Environment Configuration", "description": "Set up environment variables", "points": 2, "status": "Done"},
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "Sprint 2: MCP Server Core",
+                "goal": "Build the core MCP server",
+                "duration": "2 weeks",
+                "status": "in-progress",
+                "epics": [
+                    {
+                        "epic_id": "MCP",
+                        "name": "MCP Server Core",
+                        "goal": "Build robust MCP server foundation",
+                        "stories": [
+                            {"title": "MCP Server Framework", "description": "Integrate @modelcontextprotocol/sdk", "points": 8, "status": "Done"},
+                            {"title": "Error Handling System", "description": "Implement comprehensive error handling", "points": 5, "status": "in-progress"},
+                            {"title": "Health Monitoring", "description": "Add health check endpoints", "points": 3, "status": "todo"},
+                            {"title": "API Client Foundation", "description": "Build robust API client", "points": 5, "status": "todo"},
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "Sprint 3: Core MCP Tools",
+                "goal": "Implement essential MCP tools",
+                "duration": "2 weeks",
+                "status": "planned",
+                "epics": [
+                    {
+                        "epic_id": "MCT",
+                        "name": "Core MCP Tools",
+                        "goal": "Essential tools for CRM operations",
+                        "stories": [
+                            {"title": "Get Attendance Tool", "description": "Tool to check member attendance", "points": 5, "status": "todo"},
+                            {"title": "Member Search Logic", "description": "Flexible member search functionality", "points": 3, "status": "todo"},
+                            {"title": "Payment Status Checker", "description": "Check payment status for members", "points": 5, "status": "todo"},
+                            {"title": "Email Update Tool", "description": "Update member email addresses", "points": 3, "status": "todo"},
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "Sprint 4: Claude Integration & Backend",
+                "goal": "Integrate Claude AI and build backend",
+                "duration": "2 weeks",
+                "status": "planned",
+                "epics": [
+                    {
+                        "epic_id": "CIB",
+                        "name": "Claude Integration & Backend",
+                        "goal": "Claude AI integration and backend services",
+                        "stories": [
+                            {"title": "Express Application Setup", "description": "Configure Express.js with TypeScript", "points": 5, "status": "todo"},
+                            {"title": "Anthropic SDK Setup", "description": "Integrate Claude AI SDK", "points": 8, "status": "todo"},
+                            {"title": "Tool Definitions for Claude", "description": "Define tool schemas for Claude", "points": 5, "status": "todo"},
+                            {"title": "Main Chat Endpoint", "description": "Create chat API endpoint", "points": 8, "status": "todo"},
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "Sprint 5: Frontend Development",
+                "goal": "Build React frontend",
+                "duration": "2 weeks",
+                "status": "planned",
+                "epics": [
+                    {
+                        "epic_id": "FED",
+                        "name": "Frontend Development",
+                        "goal": "React frontend for user interactions",
+                        "stories": [
+                            {"title": "React App Initialization", "description": "Set up React with TypeScript", "points": 5, "status": "todo"},
+                            {"title": "Chat Container Component", "description": "Design chat interface", "points": 8, "status": "todo"},
+                            {"title": "Message List Component", "description": "Display conversation history", "points": 5, "status": "todo"},
+                            {"title": "API Service Layer", "description": "Organize backend communication", "points": 3, "status": "todo"},
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "Sprint 6: Testing & Quality Assurance",
+                "goal": "Comprehensive testing",
+                "duration": "2 weeks",
+                "status": "planned",
+                "epics": [
+                    {
+                        "epic_id": "TQA",
+                        "name": "Testing & Quality Assurance",
+                        "goal": "Ensure system reliability",
+                        "stories": [
+                            {"title": "Backend Unit Tests", "description": "80%+ code coverage for backend", "points": 8, "status": "todo"},
+                            {"title": "Frontend Unit Tests", "description": "Component testing with Testing Library", "points": 5, "status": "todo"},
+                            {"title": "API Integration Tests", "description": "End-to-end API workflow testing", "points": 5, "status": "todo"},
+                            {"title": "E2E Test Framework", "description": "Playwright test framework setup", "points": 8, "status": "todo"},
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "Sprint 7: Deployment & Documentation",
+                "goal": "Production deployment",
+                "duration": "1 week",
+                "status": "planned",
+                "epics": [
+                    {
+                        "epic_id": "DD",
+                        "name": "Deployment & Documentation",
+                        "goal": "Production deployment and documentation",
+                        "stories": [
+                            {"title": "Production Environment Setup", "description": "Railway production deployment", "points": 5, "status": "todo"},
+                            {"title": "CI/CD Pipeline", "description": "GitHub Actions workflow", "points": 5, "status": "todo"},
+                            {"title": "Technical Documentation", "description": "API and architecture docs", "points": 3, "status": "todo"},
+                            {"title": "User Documentation", "description": "User guides and tutorials", "points": 3, "status": "todo"},
+                        ]
+                    }
+                ]
+            }
         ]
         
-        for i, (name, goal, story_count, points) in enumerate(sprint_data, 1):
+        # Create sprints, epics, and user stories
+        for sprint_info in sprint_data:
             sprint = Sprint(
                 project=project,
-                name=name,
-                goal=goal,
-                duration="2 weeks",
-                status="planned" if i > 2 else ("in-progress" if i == 2 else "completed"),
-                story_points=points
+                name=sprint_info["name"],
+                goal=sprint_info["goal"],
+                duration=sprint_info["duration"],
+                status=sprint_info["status"],
+                story_points=0  # Will be calculated
             )
             db.session.add(sprint)
+            db.session.flush()
+            
+            total_sprint_points = 0
+            
+            for epic_info in sprint_info["epics"]:
+                epic = Epic(
+                    sprint=sprint,
+                    epic_id=epic_info["epic_id"],
+                    name=epic_info["name"],
+                    goal=epic_info["goal"]
+                )
+                db.session.add(epic)
+                db.session.flush()
+                
+                for i, story_info in enumerate(epic_info["stories"], 1):
+                    user_story = UserStory(
+                        epic=epic,
+                        story_id=f"{epic_info['epic_id']}-{i:03d}",
+                        title=story_info["title"],
+                        description=story_info["description"],
+                        story_points=story_info["points"],
+                        status=story_info["status"],
+                        created_at=datetime.utcnow()
+                    )
+                    db.session.add(user_story)
+                    total_sprint_points += story_info["points"]
+            
+            # Update sprint points
+            sprint.story_points = total_sprint_points
         
         db.session.commit()
-        return f"✅ Database reset with 7 sprints and realistic data! <br><a href='/'>← Back to Dashboard</a>"
+        
+        # Count actual user stories created
+        total_stories = UserStory.query.count()
+        
+        return f"✅ Database reset complete!<br>" \
+               f"Created 7 sprints with {total_stories} real user stories!<br>" \
+               f"<a href='/'>← Back to Dashboard</a>"
+               
     except Exception as e:
         db.session.rollback()
         return f"❌ Error: {e} <br><a href='/'>← Back to Dashboard</a>"
