@@ -314,6 +314,336 @@ def init_app():
             print(f"❌ Database initialization error: {e}")
 
 # Routes
+
+# Add this route to your app.py file to import the RinglyPro CRM project
+
+@app.route('/import-ringlypro')
+def import_ringlypro_project():
+    """Import RinglyPro CRM Enhancement project with full roadmap"""
+    try:
+        # Create or get the RinglyPro project
+        project = Project.query.filter_by(name='RinglyPro CRM Enhancement').first()
+        if not project:
+            project = Project(
+                name="RinglyPro CRM Enhancement",
+                description="Comprehensive CRM system enhancement with database integration, communication tracking, and advanced features",
+                status="active"
+            )
+            db.session.add(project)
+            db.session.flush()
+
+        # Define sprint structure based on the roadmap
+        sprint_data = [
+            {
+                "name": "Priority 1: Database Integration",
+                "goal": "Move from In-Memory to PostgreSQL for production-ready data persistence",
+                "duration": "2 weeks",
+                "status": "planned",
+                "epics": [
+                    {
+                        "epic_id": "DB1",
+                        "name": "Database Models & Migration",
+                        "goal": "Implement core database models with relationships",
+                        "stories": [
+                            {"title": "Implement Contact Model", "description": "Create Contact model with full database persistence, including fields for contact information, status, and metadata", "points": 8, "status": "todo"},
+                            {"title": "Create Appointment Model", "description": "Build Appointment model with foreign key relationships to contacts and proper scheduling fields", "points": 5, "status": "todo"},
+                            {"title": "Add Message/Call History Models", "description": "Design and implement models for tracking SMS messages and call logs with full history", "points": 8, "status": "todo"},
+                            {"title": "Database Migration Scripts", "description": "Create migration scripts for production deployment and data conversion", "points": 5, "status": "todo"},
+                            {"title": "Update API Endpoints", "description": "Refactor all API endpoints to use database instead of in-memory arrays", "points": 13, "status": "todo"},
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "Priority 2: Communication History",
+                "goal": "Complete Message & Call Logging for full communication audit trail",
+                "duration": "2 weeks",
+                "status": "planned",
+                "epics": [
+                    {
+                        "epic_id": "COM",
+                        "name": "Communication Tracking",
+                        "goal": "Comprehensive communication history and logging",
+                        "stories": [
+                            {"title": "SMS Message History", "description": "Implement SMS message history storage and retrieval with threaded conversations", "points": 8, "status": "todo"},
+                            {"title": "Call Logging System", "description": "Build incoming/outgoing call logging with duration tracking and call details", "points": 5, "status": "todo"},
+                            {"title": "Communication Timeline View", "description": "Create timeline view per contact showing all communication history", "points": 8, "status": "todo"},
+                            {"title": "Message Thread Conversations", "description": "Implement threaded message conversations with proper grouping", "points": 5, "status": "todo"},
+                            {"title": "Call Recording Storage", "description": "Add call recording storage and playback functionality", "points": 13, "status": "todo"},
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "Priority 3: Email Integration",
+                "goal": "Professional Email System for omnichannel communication",
+                "duration": "3 weeks",
+                "status": "planned",
+                "epics": [
+                    {
+                        "epic_id": "EML",
+                        "name": "Email Platform",
+                        "goal": "Complete email communication system",
+                        "stories": [
+                            {"title": "SMTP/SendGrid Integration", "description": "Integrate SMTP and SendGrid for reliable outgoing email delivery", "points": 8, "status": "todo"},
+                            {"title": "Email Templates", "description": "Create email templates for common scenarios and customizable layouts", "points": 5, "status": "todo"},
+                            {"title": "Email Tracking", "description": "Implement email tracking for open rates and click tracking analytics", "points": 8, "status": "todo"},
+                            {"title": "Bulk Email Campaigns", "description": "Build bulk email campaign system with targeting and scheduling", "points": 13, "status": "todo"},
+                            {"title": "Email Signature Management", "description": "Add email signature management with personalization options", "points": 3, "status": "todo"},
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "Priority 4: Advanced Appointment Features",
+                "goal": "Enhanced Scheduling System with automation and self-service",
+                "duration": "3 weeks",
+                "status": "planned",
+                "epics": [
+                    {
+                        "epic_id": "APT",
+                        "name": "Advanced Scheduling",
+                        "goal": "Professional scheduling with automation",
+                        "stories": [
+                            {"title": "Recurring Appointments", "description": "Implement recurring appointments (daily, weekly, monthly) with flexible patterns", "points": 8, "status": "todo"},
+                            {"title": "Appointment Reminders", "description": "Build appointment reminders via SMS and email with customizable timing", "points": 5, "status": "todo"},
+                            {"title": "Calendar Integration", "description": "Integrate with Google Calendar and Outlook for two-way sync", "points": 13, "status": "todo"},
+                            {"title": "Availability Slots", "description": "Create availability slots and booking rules with time slot management", "points": 8, "status": "todo"},
+                            {"title": "Appointment Types", "description": "Add appointment types with different durations and custom fields", "points": 5, "status": "todo"},
+                            {"title": "Self-Service Booking Portal", "description": "Build customer self-service booking portal with availability display", "points": 13, "status": "todo"},
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "Priority 5: Analytics & Reporting",
+                "goal": "Business Intelligence Dashboard for data-driven insights",
+                "duration": "2 weeks",
+                "status": "planned",
+                "epics": [
+                    {
+                        "epic_id": "ANA",
+                        "name": "Business Intelligence",
+                        "goal": "Comprehensive analytics and reporting system",
+                        "stories": [
+                            {"title": "Contact Growth Metrics", "description": "Build contact growth metrics and trends with visualization charts", "points": 8, "status": "todo"},
+                            {"title": "Appointment Analytics", "description": "Create appointment analytics tracking show rates, peak times, and patterns", "points": 8, "status": "todo"},
+                            {"title": "Communication Statistics", "description": "Implement communication volume statistics and response time metrics", "points": 5, "status": "todo"},
+                            {"title": "Revenue Tracking", "description": "Add revenue tracking per contact and appointment with financial reporting", "points": 8, "status": "todo"},
+                            {"title": "Custom Report Builder", "description": "Build custom report builder with drag-and-drop functionality", "points": 13, "status": "todo"},
+                            {"title": "Data Export System", "description": "Create data export in multiple formats (PDF, Excel, CSV)", "points": 5, "status": "todo"},
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "Priority 6: User Management",
+                "goal": "Multi-User Support for enterprise-ready CRM system",
+                "duration": "2 weeks",
+                "status": "planned",
+                "epics": [
+                    {
+                        "epic_id": "USR",
+                        "name": "Multi-User System",
+                        "goal": "Enterprise user management and permissions",
+                        "stories": [
+                            {"title": "User Authentication", "description": "Implement user authentication and secure login system with password policies", "points": 8, "status": "todo"},
+                            {"title": "Role-Based Permissions", "description": "Create role-based permissions (admin, sales, support) with granular access control", "points": 8, "status": "todo"},
+                            {"title": "Team Assignment", "description": "Add team assignment for contacts with ownership and collaboration features", "points": 5, "status": "todo"},
+                            {"title": "Activity Logging", "description": "Implement activity logging and user audit trails for security and compliance", "points": 5, "status": "todo"},
+                            {"title": "User Settings", "description": "Build user settings and preferences with customizable dashboard layouts", "points": 3, "status": "todo"},
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "Priority 7: Advanced CRM Features",
+                "goal": "Sales Pipeline & Lead Management for complete sales automation",
+                "duration": "3 weeks",
+                "status": "planned",
+                "epics": [
+                    {
+                        "epic_id": "CRM",
+                        "name": "Sales Pipeline",
+                        "goal": "Complete sales process automation",
+                        "stories": [
+                            {"title": "Lead Scoring System", "description": "Implement lead scoring and qualification with customizable criteria", "points": 8, "status": "todo"},
+                            {"title": "Sales Pipeline Stages", "description": "Create sales pipeline stages with drag-and-drop management", "points": 8, "status": "todo"},
+                            {"title": "Deal Tracking", "description": "Build deal and opportunity tracking with value and probability management", "points": 8, "status": "todo"},
+                            {"title": "Follow-up Task Management", "description": "Add follow-up task management with automated reminders and workflows", "points": 5, "status": "todo"},
+                            {"title": "Quote Generation", "description": "Create quote and proposal generation with templates and e-signature", "points": 13, "status": "todo"},
+                            {"title": "Contract Management", "description": "Implement contract management with status tracking and renewal alerts", "points": 8, "status": "todo"},
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "Priority 8: Integration & API",
+                "goal": "Third-Party Integrations for seamless business workflows",
+                "duration": "2 weeks",
+                "status": "planned",
+                "epics": [
+                    {
+                        "epic_id": "INT",
+                        "name": "External Integrations",
+                        "goal": "Seamless workflow with existing business tools",
+                        "stories": [
+                            {"title": "Webhook System", "description": "Build webhook system for external integrations with retry logic and monitoring", "points": 8, "status": "todo"},
+                            {"title": "Public API", "description": "Create public API with authentication and comprehensive documentation", "points": 8, "status": "todo"},
+                            {"title": "Zapier Integration", "description": "Implement Zapier integration for workflow automation with popular apps", "points": 5, "status": "todo"},
+                            {"title": "Google Workspace Integration", "description": "Add Google Workspace integration for Gmail, Calendar, and Drive", "points": 8, "status": "todo"},
+                            {"title": "Microsoft 365 Integration", "description": "Integrate with Microsoft 365 for Outlook, Teams, and OneDrive", "points": 8, "status": "todo"},
+                            {"title": "Social Media Lead Capture", "description": "Build social media lead capture from Facebook, LinkedIn, and Twitter", "points": 5, "status": "todo"},
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "Priority 9: Mobile App",
+                "goal": "Native Mobile Experience for complete mobile CRM solution",
+                "duration": "4 weeks",
+                "status": "planned",
+                "epics": [
+                    {
+                        "epic_id": "MOB",
+                        "name": "Mobile Platform",
+                        "goal": "Complete mobile CRM solution",
+                        "stories": [
+                            {"title": "Progressive Web App", "description": "Implement Progressive Web App (PWA) with offline capabilities", "points": 13, "status": "todo"},
+                            {"title": "Mobile Contact Management", "description": "Create mobile-optimized contact management with touch-friendly interface", "points": 8, "status": "todo"},
+                            {"title": "Push Notifications", "description": "Add push notifications for appointments and important updates", "points": 5, "status": "todo"},
+                            {"title": "Offline Functionality", "description": "Implement offline functionality with data sync when connection restored", "points": 13, "status": "todo"},
+                            {"title": "Mobile Call Integration", "description": "Add mobile call integration with native dialer and call logging", "points": 8, "status": "todo"},
+                            {"title": "Location-Based Features", "description": "Build location-based features for check-ins and proximity alerts", "points": 5, "status": "todo"},
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "Priority 10: Advanced Features",
+                "goal": "AI & Automation for next-generation intelligent CRM platform",
+                "duration": "4 weeks",
+                "status": "planned",
+                "epics": [
+                    {
+                        "epic_id": "AI",
+                        "name": "AI & Automation",
+                        "goal": "Next-generation intelligent CRM platform",
+                        "stories": [
+                            {"title": "AI-Powered Contact Insights", "description": "Implement AI-powered contact insights with behavioral analysis", "points": 13, "status": "todo"},
+                            {"title": "Automated Follow-up Suggestions", "description": "Create automated follow-up suggestions based on contact behavior", "points": 8, "status": "todo"},
+                            {"title": "Sentiment Analysis", "description": "Add sentiment analysis on communications to gauge customer satisfaction", "points": 8, "status": "todo"},
+                            {"title": "Smart Appointment Scheduling", "description": "Build smart appointment scheduling with AI-optimized time suggestions", "points": 13, "status": "todo"},
+                            {"title": "Chatbot Integration", "description": "Implement chatbot integration for automated customer support", "points": 8, "status": "todo"},
+                            {"title": "Predictive Analytics", "description": "Add predictive analytics for sales forecasting and churn prediction", "points": 13, "status": "todo"},
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "Quick Wins Sprint",
+                "goal": "Immediate improvements that can be implemented quickly",
+                "duration": "1 week",
+                "status": "planned",
+                "epics": [
+                    {
+                        "epic_id": "QW",
+                        "name": "Quick Wins",
+                        "goal": "Fast implementation high-impact features",
+                        "stories": [
+                            {"title": "Database Migration", "description": "Move contacts to PostgreSQL for data persistence", "points": 5, "status": "todo"},
+                            {"title": "Message History", "description": "Store and display SMS conversations with basic threading", "points": 3, "status": "todo"},
+                            {"title": "Appointment Notifications", "description": "SMS reminders before appointments with basic templating", "points": 3, "status": "todo"},
+                            {"title": "Enhanced Search", "description": "Full-text search across all contact fields", "points": 5, "status": "todo"},
+                            {"title": "Data Validation", "description": "Phone number formatting and validation", "points": 2, "status": "todo"},
+                            {"title": "Bulk Operations", "description": "Select multiple contacts for bulk actions", "points": 5, "status": "todo"},
+                            {"title": "Contact Import", "description": "CSV contact import functionality", "points": 5, "status": "todo"},
+                            {"title": "Activity Feed", "description": "Recent activities dashboard widget", "points": 3, "status": "todo"},
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "Technical Debt & Improvements",
+                "goal": "System reliability, performance, and maintainability improvements",
+                "duration": "2 weeks",
+                "status": "planned",
+                "epics": [
+                    {
+                        "epic_id": "TD",
+                        "name": "Technical Infrastructure",
+                        "goal": "System reliability and performance optimization",
+                        "stories": [
+                            {"title": "Error Logging", "description": "Add comprehensive error logging with structured logging and alerting", "points": 3, "status": "todo"},
+                            {"title": "Request/Response Caching", "description": "Implement request/response caching for improved performance", "points": 5, "status": "todo"},
+                            {"title": "API Rate Limiting", "description": "Add API rate limiting per user with configurable limits", "points": 3, "status": "todo"},
+                            {"title": "Database Query Optimization", "description": "Optimize database queries and add proper indexing", "points": 5, "status": "todo"},
+                            {"title": "Frontend State Management", "description": "Improve frontend state management and component organization", "points": 8, "status": "todo"},
+                            {"title": "Automated Testing Suite", "description": "Create comprehensive automated testing suite with unit and integration tests", "points": 8, "status": "todo"},
+                            {"title": "CI/CD Pipeline", "description": "Set up CI/CD pipeline with automated deployment and testing", "points": 5, "status": "todo"},
+                            {"title": "Docker Containerization", "description": "Containerize application with Docker for consistent deployments", "points": 5, "status": "todo"},
+                            {"title": "Performance Monitoring", "description": "Add performance monitoring and application metrics", "points": 3, "status": "todo"},
+                            {"title": "Security Audit", "description": "Conduct security audit and implement hardening measures", "points": 8, "status": "todo"},
+                        ]
+                    }
+                ]
+            }
+        ]
+        
+        # Create sprints, epics, and user stories
+        stories_created = 0
+        for sprint_info in sprint_data:
+            sprint = Sprint(
+                project=project,
+                name=sprint_info["name"],
+                goal=sprint_info["goal"],
+                duration=sprint_info["duration"],
+                status=sprint_info["status"],
+                story_points=0  # Will be calculated
+            )
+            db.session.add(sprint)
+            db.session.flush()
+            
+            total_sprint_points = 0
+            
+            for epic_info in sprint_info["epics"]:
+                epic = Epic(
+                    sprint=sprint,
+                    epic_id=epic_info["epic_id"],
+                    name=epic_info["name"],
+                    goal=epic_info["goal"]
+                )
+                db.session.add(epic)
+                db.session.flush()
+                
+                for i, story_info in enumerate(epic_info["stories"], 1):
+                    user_story = UserStory(
+                        epic=epic,
+                        story_id=f"{epic_info['epic_id']}-{i:03d}",
+                        title=story_info["title"],
+                        description=story_info["description"],
+                        story_points=story_info["points"],
+                        status=story_info["status"],
+                        created_at=datetime.utcnow()
+                    )
+                    db.session.add(user_story)
+                    total_sprint_points += story_info["points"]
+                    stories_created += 1
+            
+            # Update sprint points
+            sprint.story_points = total_sprint_points
+        
+        db.session.commit()
+        
+        return f"✅ RinglyPro CRM Enhancement project imported successfully!<br>" \
+               f"Created 12 sprints with {stories_created} user stories!<br>" \
+               f"Total story points: {sum(sprint.story_points for sprint in project.sprints)}<br>" \
+               f"<a href='/'>← Back to Dashboard</a>"
+               
+    except Exception as e:
+        db.session.rollback()
+        return f"❌ Error importing RinglyPro project: {e} <br><a href='/'>← Back to Dashboard</a>"
+
 @app.route('/')
 def dashboard():
     try:
