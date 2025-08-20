@@ -346,42 +346,48 @@ def upgrade_database():
         with app.app_context():
             # Add initial_prompt column to project table if it doesn't exist
             try:
-                db.engine.execute(text('ALTER TABLE project ADD COLUMN initial_prompt TEXT'))
-                print("✅ Added initial_prompt to Project table")
+                with db.engine.connect() as conn:
+                    conn.execute(text('ALTER TABLE project ADD COLUMN initial_prompt TEXT'))
+                    conn.commit()
+                print("Added initial_prompt to Project table")
             except Exception as e:
                 if 'already exists' in str(e).lower() or 'duplicate column' in str(e).lower():
-                    print("ℹ️ initial_prompt column already exists")
+                    print("initial_prompt column already exists")
                 else:
-                    print(f"⚠️ Error adding initial_prompt: {e}")
+                    print(f"Error adding initial_prompt: {e}")
             
             # Add task_prompt column to user_story table if it doesn't exist
             try:
-                db.engine.execute(text('ALTER TABLE user_story ADD COLUMN task_prompt TEXT'))
-                print("✅ Added task_prompt to UserStory table")
+                with db.engine.connect() as conn:
+                    conn.execute(text('ALTER TABLE user_story ADD COLUMN task_prompt TEXT'))
+                    conn.commit()
+                print("Added task_prompt to UserStory table")
             except Exception as e:
                 if 'already exists' in str(e).lower() or 'duplicate column' in str(e).lower():
-                    print("ℹ️ task_prompt column already exists")
+                    print("task_prompt column already exists")
                 else:
-                    print(f"⚠️ Error adding task_prompt: {e}")
+                    print(f"Error adding task_prompt: {e}")
             
             # Add priority column to user_story table if it doesn't exist
             try:
-                db.engine.execute(text('ALTER TABLE user_story ADD COLUMN priority INTEGER DEFAULT 5'))
-                print("✅ Added priority to UserStory table")
+                with db.engine.connect() as conn:
+                    conn.execute(text('ALTER TABLE user_story ADD COLUMN priority INTEGER DEFAULT 5'))
+                    conn.commit()
+                print("Added priority to UserStory table")
             except Exception as e:
                 if 'already exists' in str(e).lower() or 'duplicate column' in str(e).lower():
-                    print("ℹ️ priority column already exists")
+                    print("priority column already exists")
                 else:
-                    print(f"⚠️ Error adding priority: {e}")
+                    print(f"Error adding priority: {e}")
             
             # Create new tables
             db.create_all()
-            print("✅ Created new tables: ProjectTemplate, GeneratedPlan")
+            print("Created new tables: ProjectTemplate, GeneratedPlan")
             
             return True
             
     except Exception as e:
-        print(f"❌ Migration error: {e}")
+        print(f"Migration error: {e}")
         return False
 
 # Routes
