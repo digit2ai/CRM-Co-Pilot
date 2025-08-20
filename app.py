@@ -77,7 +77,7 @@ class Risk(db.Model):
     description = db.Column(db.Text)
     severity = db.Column(db.String(50), default='medium')
     mitigation = db.Column(db.Text)
-    status = db.Column(db.String(50), default='open
+   status = db.Column(db.String(50), default='open')
 class ProjectTemplate(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(200), nullable=False)
