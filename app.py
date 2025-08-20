@@ -597,15 +597,62 @@ def calculate_story_points(summary, description, priority):
     
     return min(base_points + complexity_bonus, 13)
 
+# Database migration utilities
+def update_database_schema():
+    """Update database schema to add new columns if they don't exist"""
+    try:
+        # Check if we need to add new columns to existing tables
+        inspector = db.inspect(db.engine)
+        
+        # Get existing columns for project table
+        project_columns = [col['name'] for col in inspector.get_columns('project')]
+        
+        # Add missing columns to project table
+        if 'project_type' not in project_columns:
+            db.engine.execute('ALTER TABLE project ADD COLUMN project_type VARCHAR(50) DEFAULT \'general\'')
+            print("✅ Added project_type column to project table")
+        
+        if 'created_from_template' not in project_columns:
+            db.engine.execute('ALTER TABLE project ADD COLUMN created_from_template INTEGER')
+            print("✅ Added created_from_template column to project table")
+        
+        # Check if UserStory table needs updates
+        user_story_columns = [col['name'] for col in inspector.get_columns('user_story')]
+        
+        if 'priority' not in user_story_columns:
+            db.engine.execute('ALTER TABLE user_story ADD COLUMN priority VARCHAR(20) DEFAULT \'medium\'')
+            print("✅ Added priority column to user_story table")
+        
+        if 'updated_at' not in user_story_columns:
+            db.engine.execute('ALTER TABLE user_story ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP')
+            print("✅ Added updated_at column to user_story table")
+        
+        # Check if Sprint table needs updates
+        sprint_columns = [col['name'] for col in inspector.get_columns('sprint')]
+        
+        if 'sprint_order' not in sprint_columns:
+            db.engine.execute('ALTER TABLE sprint ADD COLUMN sprint_order INTEGER DEFAULT 1')
+            print("✅ Added sprint_order column to sprint table")
+        
+        return True
+    except Exception as e:
+        print(f"❌ Error updating database schema: {e}")
+        return False
+
 # Initialize database and sample data
 def init_app():
     """Initialize app with database and sample data"""
     with app.app_context():
         try:
+            # First create all tables
             db.create_all()
             print("✅ Database tables created")
             
-            if not Project.query.first():
+            # Update schema for existing databases
+            schema_updated = update_database_schema()
+            
+            # Only proceed with sample data if schema is good
+            if schema_updated and not Project.query.first():
                 # Create a sample project using the new prompt-based system
                 sample_project = create_project_from_prompt(
                     "CRM Assistant Project",
@@ -614,41 +661,44 @@ def init_app():
                 print("✅ Sample CRM project created using prompt generation")
                 
                 # Create some default templates
-                crm_template_data = generate_project_structure('crm', 'CRM system', 'Template')
-                crm_template = ProjectTemplate(
-                    name="Standard CRM Template",
-                    description="Complete CRM system with contact management, lead tracking, and communication tools",
-                    project_type="crm",
-                    template_data=json.dumps(crm_template_data),
-                    created_by="system",
-                    is_public=True
-                )
-                db.session.add(crm_template)
-                
-                ecommerce_template_data = generate_project_structure('ecommerce', 'Online store', 'Template')
-                ecommerce_template = ProjectTemplate(
-                    name="E-commerce Store Template",
-                    description="Complete e-commerce solution with product catalog, shopping cart, and payment processing",
-                    project_type="ecommerce",
-                    template_data=json.dumps(ecommerce_template_data),
-                    created_by="system",
-                    is_public=True
-                )
-                db.session.add(ecommerce_template)
-                
-                mobile_template_data = generate_project_structure('mobile', 'Mobile app', 'Template')
-                mobile_template = ProjectTemplate(
-                    name="Mobile App Template",
-                    description="Mobile application development with React Native",
-                    project_type="mobile",
-                    template_data=json.dumps(mobile_template_data),
-                    created_by="system",
-                    is_public=True
-                )
-                db.session.add(mobile_template)
-                
-                db.session.commit()
-                print("✅ Default templates created")
+                try:
+                    crm_template_data = generate_project_structure('crm', 'CRM system', 'Template')
+                    crm_template = ProjectTemplate(
+                        name="Standard CRM Template",
+                        description="Complete CRM system with contact management, lead tracking, and communication tools",
+                        project_type="crm",
+                        template_data=json.dumps(crm_template_data),
+                        created_by="system",
+                        is_public=True
+                    )
+                    db.session.add(crm_template)
+                    
+                    ecommerce_template_data = generate_project_structure('ecommerce', 'Online store', 'Template')
+                    ecommerce_template = ProjectTemplate(
+                        name="E-commerce Store Template",
+                        description="Complete e-commerce solution with product catalog, shopping cart, and payment processing",
+                        project_type="ecommerce",
+                        template_data=json.dumps(ecommerce_template_data),
+                        created_by="system",
+                        is_public=True
+                    )
+                    db.session.add(ecommerce_template)
+                    
+                    mobile_template_data = generate_project_structure('mobile', 'Mobile app', 'Template')
+                    mobile_template = ProjectTemplate(
+                        name="Mobile App Template",
+                        description="Mobile application development with React Native",
+                        project_type="mobile",
+                        template_data=json.dumps(mobile_template_data),
+                        created_by="system",
+                        is_public=True
+                    )
+                    db.session.add(mobile_template)
+                    
+                    db.session.commit()
+                    print("✅ Default templates created")
+                except Exception as template_error:
+                    print(f"⚠️ Could not create templates: {template_error}")
                 
             else:
                 print("✅ Database already has data")
@@ -662,14 +712,28 @@ def init_app():
 def dashboard():
     try:
         projects = Project.query.all()
-        templates = ProjectTemplate.query.filter_by(is_public=True).limit(5).all()
+        # Try to get templates, but handle if table doesn't exist yet
+        try:
+            templates = ProjectTemplate.query.filter_by(is_public=True).limit(5).all()
+        except Exception:
+            templates = []  # Template table might not exist yet
+            
         return render_template('dashboard.html', projects=projects, templates=templates)
     except Exception as e:
         print(f"Dashboard error: {e}")
-        init_app()
-        projects = Project.query.all()
-        templates = ProjectTemplate.query.filter_by(is_public=True).limit(5).all()
-        return render_template('dashboard.html', projects=projects, templates=templates)
+        # If we have schema issues, try to fix them
+        try:
+            init_app()
+            projects = Project.query.all()
+            try:
+                templates = ProjectTemplate.query.filter_by(is_public=True).limit(5).all()
+            except Exception:
+                templates = []
+            return render_template('dashboard.html', projects=projects, templates=templates)
+        except Exception as init_error:
+            print(f"Init error: {init_error}")
+            # Return a basic page if all else fails
+            return render_template('dashboard.html', projects=[], templates=[])
 
 @app.route('/project/<int:project_id>')
 def project_detail(project_id):
@@ -706,7 +770,7 @@ def create_from_prompt_form():
 
 @app.route('/create-from-prompt', methods=['POST'])
 def create_from_prompt():
-    """Create project from text prompt"""
+    """Create project from text prompt (traditional form)"""
     try:
         name = request.form.get('name', '').strip()
         description = request.form.get('description', '').strip()
@@ -729,6 +793,58 @@ def create_from_prompt():
     except Exception as e:
         flash(f'Error creating project: {str(e)}', 'error')
         return redirect(url_for('create_from_prompt_form'))
+
+@app.route('/generate-project', methods=['POST'])
+def generate_project_api():
+    """API endpoint to generate project from prompt (returns JSON)"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': 'No data provided'}), 400
+        
+        prompt = data.get('prompt', '').strip()
+        project_name = data.get('project_name', '').strip()
+        
+        if not prompt:
+            return jsonify({'success': False, 'error': 'Project description is required'}), 400
+        
+        # Auto-generate project name if not provided
+        if not project_name:
+            # Extract first few words from prompt as project name
+            words = prompt.split()[:4]
+            project_name = ' '.join(words).title()
+            if len(project_name) > 50:
+                project_name = project_name[:47] + "..."
+        
+        # Check if project name already exists
+        existing = Project.query.filter_by(name=project_name).first()
+        if existing:
+            # Add timestamp to make it unique
+            from datetime import datetime
+            timestamp = datetime.now().strftime("%m%d%H%M")
+            project_name = f"{project_name} ({timestamp})"
+        
+        # Create project
+        project = create_project_from_prompt(project_name, prompt)
+        
+        # Count total user stories
+        total_stories = 0
+        for sprint in project.sprints:
+            for epic in sprint.epics:
+                total_stories += len(epic.user_stories)
+        
+        return jsonify({
+            'success': True,
+            'project_id': project.id,
+            'project_name': project.name,
+            'project_type': project.project_type,
+            'total_sprints': len(project.sprints),
+            'total_stories': total_stories,
+            'total_story_points': sum(s.story_points for s in project.sprints)
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 # Task prompt editing routes
 
