@@ -708,6 +708,89 @@ def init_app():
 
 # Main Routes
 
+# Add this route to your app.py to manually fix the database schema
+
+@app.route('/fix-database-schema')
+def fix_database_schema():
+    """Manually fix database schema by adding missing columns"""
+    try:
+        with db.engine.connect() as connection:
+            # Start a transaction
+            trans = connection.begin()
+            
+            try:
+                # Add missing columns to project table
+                connection.execute(db.text("""
+                    ALTER TABLE project 
+                    ADD COLUMN IF NOT EXISTS project_type VARCHAR(50) DEFAULT 'general'
+                """))
+                
+                connection.execute(db.text("""
+                    ALTER TABLE project 
+                    ADD COLUMN IF NOT EXISTS created_from_template INTEGER
+                """))
+                
+                # Add missing columns to user_story table
+                connection.execute(db.text("""
+                    ALTER TABLE user_story 
+                    ADD COLUMN IF NOT EXISTS priority VARCHAR(20) DEFAULT 'medium'
+                """))
+                
+                connection.execute(db.text("""
+                    ALTER TABLE user_story 
+                    ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                """))
+                
+                # Add missing column to sprint table
+                connection.execute(db.text("""
+                    ALTER TABLE sprint 
+                    ADD COLUMN IF NOT EXISTS sprint_order INTEGER DEFAULT 1
+                """))
+                
+                # Create project_template table if it doesn't exist
+                connection.execute(db.text("""
+                    CREATE TABLE IF NOT EXISTS project_template (
+                        id SERIAL PRIMARY KEY,
+                        name VARCHAR(200) NOT NULL,
+                        description TEXT,
+                        project_type VARCHAR(50) NOT NULL,
+                        template_data TEXT,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        created_by VARCHAR(100) DEFAULT 'system',
+                        is_public BOOLEAN DEFAULT true,
+                        usage_count INTEGER DEFAULT 0
+                    )
+                """))
+                
+                # Commit the transaction
+                trans.commit()
+                
+                return """
+                <h2>✅ Database Schema Fixed Successfully!</h2>
+                <p>All missing columns and tables have been added.</p>
+                <ul>
+                    <li>Added project_type column to project table</li>
+                    <li>Added created_from_template column to project table</li>
+                    <li>Added priority column to user_story table</li>
+                    <li>Added updated_at column to user_story table</li>
+                    <li>Added sprint_order column to sprint table</li>
+                    <li>Created project_template table</li>
+                </ul>
+                <p><a href="/" class="btn btn-primary">← Back to Dashboard</a></p>
+                <p><a href="/create-from-prompt" class="btn btn-success">Try Creating a Project</a></p>
+                """
+                
+            except Exception as e:
+                trans.rollback()
+                raise e
+                
+    except Exception as e:
+        return f"""
+        <h2>❌ Error Fixing Database Schema</h2>
+        <p>Error: {str(e)}</p>
+        <p><a href="/" class="btn btn-primary">← Back to Dashboard</a></p>
+        """
+
 @app.route('/')
 def dashboard():
     try:
