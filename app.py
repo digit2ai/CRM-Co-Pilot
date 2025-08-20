@@ -29,6 +29,9 @@ class Project(db.Model):
     status = db.Column(db.String(50), default='active')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
+    # NEW: Add initial project prompt field
+    initial_prompt = db.Column(db.Text)
+    
     sprints = db.relationship('Sprint', backref='project', lazy=True, cascade='all, delete-orphan')
 
 class Sprint(db.Model):
@@ -62,6 +65,10 @@ class UserStory(db.Model):
     status = db.Column(db.String(50), default='todo')
     assignee = db.Column(db.String(100))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # NEW: Add individual task prompt field and priority
+    task_prompt = db.Column(db.Text)
+    priority = db.Column(db.Integer, default=5)
 
 class Risk(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -70,7 +77,25 @@ class Risk(db.Model):
     description = db.Column(db.Text)
     severity = db.Column(db.String(50), default='medium')
     mitigation = db.Column(db.Text)
-    status = db.Column(db.String(50), default='open')
+    status = db.Column(db.String(50), default='open
+class ProjectTemplate(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text)
+    template_prompt = db.Column(db.Text)
+    category = db.Column(db.String(100))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class GeneratedPlan(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    project_id = db.Column(db.Integer, db.ForeignKey('project.id'), nullable=False)
+    original_prompt = db.Column(db.Text, nullable=False)
+    generated_plan = db.Column(db.Text)
+    ai_model_used = db.Column(db.String(100))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    project = db.relationship('Project', backref='generated_plans')
+                       
 
 # Import Functions
 def extract_epic_info(summary, description):
@@ -312,6 +337,52 @@ def init_app():
                 
         except Exception as e:
             print(f"❌ Database initialization error: {e}")
+
+def upgrade_database():
+    """Add new columns to existing tables safely"""
+    try:
+        from sqlalchemy import text
+        
+        with app.app_context():
+            # Add initial_prompt column to project table if it doesn't exist
+            try:
+                db.engine.execute(text('ALTER TABLE project ADD COLUMN initial_prompt TEXT'))
+                print("✅ Added initial_prompt to Project table")
+            except Exception as e:
+                if 'already exists' in str(e).lower() or 'duplicate column' in str(e).lower():
+                    print("ℹ️ initial_prompt column already exists")
+                else:
+                    print(f"⚠️ Error adding initial_prompt: {e}")
+            
+            # Add task_prompt column to user_story table if it doesn't exist
+            try:
+                db.engine.execute(text('ALTER TABLE user_story ADD COLUMN task_prompt TEXT'))
+                print("✅ Added task_prompt to UserStory table")
+            except Exception as e:
+                if 'already exists' in str(e).lower() or 'duplicate column' in str(e).lower():
+                    print("ℹ️ task_prompt column already exists")
+                else:
+                    print(f"⚠️ Error adding task_prompt: {e}")
+            
+            # Add priority column to user_story table if it doesn't exist
+            try:
+                db.engine.execute(text('ALTER TABLE user_story ADD COLUMN priority INTEGER DEFAULT 5'))
+                print("✅ Added priority to UserStory table")
+            except Exception as e:
+                if 'already exists' in str(e).lower() or 'duplicate column' in str(e).lower():
+                    print("ℹ️ priority column already exists")
+                else:
+                    print(f"⚠️ Error adding priority: {e}")
+            
+            # Create new tables
+            db.create_all()
+            print("✅ Created new tables: ProjectTemplate, GeneratedPlan")
+            
+            return True
+            
+    except Exception as e:
+        print(f"❌ Migration error: {e}")
+        return False
 
 # Routes
 
@@ -589,6 +660,30 @@ def import_ringlypro_project():
                 ]
             }
         ]
+
+        @app.route('/upgrade-database')
+def upgrade_database_route():
+    """Upgrade existing database with new columns"""
+    try:
+        success = upgrade_database()
+        if success:
+            return """
+            <h2>✅ Database upgraded successfully!</h2>
+            <p>New columns and tables have been added.</p>
+            <a href="/">← Back to Dashboard</a>
+            """
+        else:
+            return """
+            <h2>⚠️ Database upgrade had issues</h2>
+            <p>Check the console logs for details.</p>
+            <a href="/">← Back to Dashboard</a>
+            """
+    except Exception as e:
+        return f"""
+        <h2>❌ Upgrade error</h2>
+        <p>Error: {e}</p>
+        <a href="/">← Back to Dashboard</a>
+        """
         
         # Create sprints, epics, and user stories
         stories_created = 0
