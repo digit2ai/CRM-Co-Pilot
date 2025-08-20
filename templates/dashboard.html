@@ -159,8 +159,13 @@
                                             <span class="badge badge-success mr-2">{{ project.status|title }}</span>
                                             <small class="text-muted mr-3">{{ project.sprints|length }} sprint{{ 's' if project.sprints|length != 1 else '' }}</small>
                                             <small class="text-muted">
-                                                {% set total_stories = project.sprints | map(attribute='epics') | flatten | map(attribute='user_stories') | flatten | list | length %}
-                                                {{ total_stories }} user stor{{ 'ies' if total_stories != 1 else 'y' }}
+                                                {% set total_stories = [] %}
+                                                {% for sprint in project.sprints %}
+                                                    {% for epic in sprint.epics %}
+                                                        {% set _ = total_stories.extend(epic.user_stories) %}
+                                                    {% endfor %}
+                                                {% endfor %}
+                                                {{ total_stories|length }} user stor{{ 'ies' if total_stories|length != 1 else 'y' }}
                                             </small>
                                         </div>
                                     </div>
